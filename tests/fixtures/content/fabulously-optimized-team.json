@@ -1,0 +1,26 @@
+[
+  {
+    "user": {
+      "username": "robotkoer"
+    },
+    "role": "Member"
+  },
+  {
+    "user": {
+      "username": "Kichura"
+    },
+    "role": "Community Moderator"
+  },
+  {
+    "user": {
+      "username": "alexjs"
+    },
+    "role": "Community Moderator"
+  },
+  {
+    "user": {
+      "username": "nick9509"
+    },
+    "role": "Community Moderator"
+  }
+]

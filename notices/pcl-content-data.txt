@@ -1,0 +1,10 @@
+PCL / MC百科中文名称快照与分类来源
+
+Source: user-supplied read-only PCL-2.12.7.3.zip, PCL-2.12.7.3/Plain Craft Launcher 2/Resources/moddata.zip.
+Unmodified archive redistributed as public/data/pcl-moddata.zip (packaged dist/renderer/data/pcl-moddata.zip).
+SHA-256: 12cd763062f0cc361f38db5f370e2725257a2a8d59f301a1fd1c5b59b63fb644.
+Inner moddata.txt: 791112 bytes; original source line numbers are MC百科 entry IDs.
+Chinese names and aliases originate from PCL's bundled MC百科 snapshot; rights remain with their original authors and contributors. No separate license notice exists inside moddata.zip.
+Parser semantics adapted from Modules/Resource/WikiEntry.vb. Category labels/provider mappings derive from Pages/PageDownload/Resource/PageDownload{Mod,Pack,DataPack,Shader,ResourcePack}.xaml and ResourceProject.vb.
+The source archive's root LICENCE is preserved byte-for-byte as notices/PCL-LICENCE. It is a custom author guidance/rights notice, not MIT; this project does not infer a broader data license. User states original-author permission for selective reuse. Source attribution does not change this launcher's developer credit, 杯艺宣.
+Names remain display metadata only, apply to Mod/datapack only, and never replace provider IDs, slugs, file IDs or native pack titles. No automatic snapshot updates or machine-translated names.

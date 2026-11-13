@@ -1,0 +1,9 @@
+PCL version browser source references and Minecraft artwork
+
+Source archive supplied and reuse authorized by the user: PCL-2.12.7.3.zip
+Archive root: PCL-2.12.7.3/Plain Craft Launcher 2/
+PCL (Plain Craft Launcher) original authors retain rights to their source and distribution.
+Selective TypeScript adaptation: Pages/PageDownload/PageDownloadInstall.xaml.vb (LoadMinecraft category rules and layout); Modules/Minecraft/ModMinecraft.vb (GetMcFoolName identification); Pages/PageDownload/ModDownloadLib.vb (McDownloadListItem icon mapping).
+Four unmodified block images: Images/Blocks/Grass.png, CommandBlock.png, CobbleStone.png, GoldBlock.png.
+Minecraft block artwork belongs to Mojang/Microsoft. The archive does not establish a separate MIT license for this artwork. This launcher is not an official Minecraft product and is not approved by or associated with Mojang/Microsoft.
+Only these four images were extracted; the original archive was not modified. See docs/pcl-source-references.md for implementation differences and provenance.

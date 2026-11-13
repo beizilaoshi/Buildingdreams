@@ -1,0 +1,8 @@
+PCL launch readiness behavior reference
+
+The final graphics-log completion condition in this launcher's launch service is adapted from PCL's ModWatcher.GameLog / ProgressUpdate (ModWatcher.vb, lines 194–205 and 241–244 in the user-supplied PCL-2.12.7.3.zip).
+
+PCL source: https://github.com/Hex-Dragon/PCL2
+PCL and its original contributors retain their rights. The supplied source notice is preserved as PCL-LICENCE in this directory. The user states original-author permission for selective code reuse.
+
+Zhumeng independently implements its process ownership, lifecycle and UI integration. Its graphics-ready signal is separate from an observed visible window. This launcher is independently maintained by 杯艺宣; attribution does not imply endorsement by PCL.

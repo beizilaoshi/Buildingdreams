@@ -1,0 +1,37 @@
+{
+  "game_versions": [
+    "26.3"
+  ],
+  "loaders": [
+    "datapack"
+  ],
+  "environment": "unknown",
+  "id": "fqnsIp6d",
+  "project_id": "8oi3bsk5",
+  "author_id": "SR8MIsEo",
+  "featured": false,
+  "name": "v2.6.5+26.3 ~ Datapack",
+  "version_number": "2.6.5+26.3",
+  "changelog": "# Terralith v2.6.5+26.3\n- Updated to support 26.3 (Apollo)\n- Implemented new Poplar blocks into existing biomes\n- Added Shelf Mushrooms to all fallen logs\n- Added custom Abandoned Camps for Alpine Highlands (more later!)\n- Vanilla Abandoned Camps generate in Terralith biomes\n- Fixed a bug where features would not generate properly in Gravel Desert\n- Fixed a bug where Scarlet Mountain had too much snow\n- Fixed a bug where upgrading to new versions could result in small chunk borders\n\nHuge thank you to Apollo for making the majority of this update happen.",
+  "changelog_url": null,
+  "date_published": "2026-09-27T20:51:14.636501Z",
+  "downloads": 46290,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+    {
+      "id": "hWzmTT08",
+      "hashes": {
+        "sha1": "f177f61facf8c43705debe1e1508792dcf4d5323",
+        "sha512": "edc75fb0be5d009590d16d0d96ef73fc2e87c3edd3c5b4d80589070a636beeaf4ea202ee3cffaa06ad68a615bbb03e924cd3e173cbd649fb47b5ec6fc74c2482"
+      },
+      "url": "https://cdn.modrinth.com/data/8oi3bsk5/versions/fqnsIp6d/Terralith_v2.6.5%2B26.3.zip",
+      "filename": "Terralith_v2.6.5+26.3.zip",
+      "primary": true,
+      "size": 2985816,
+      "file_type": null
+    }
+  ],
+  "dependencies": []
+}

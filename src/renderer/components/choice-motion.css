@@ -1,0 +1,61 @@
+/* Preserve the existing card treatment while interpolating selection changes. */
+.choice-control .choice-card,
+.choice-control .filter-chip,
+.wallpaper-gallery .wallpaper-choice {
+  transition:
+    background-color var(--duration) cubic-bezier(.22, 1, .36, 1),
+    border-color var(--duration) cubic-bezier(.22, 1, .36, 1),
+    box-shadow var(--duration) cubic-bezier(.22, 1, .36, 1),
+    color var(--duration) cubic-bezier(.22, 1, .36, 1),
+    transform var(--duration) cubic-bezier(.22, 1, .36, 1);
+}
+
+.wallpaper-gallery .wallpaper-choice {
+  transition-property: background-color, border-color, box-shadow, color, transform, outline-color;
+}
+
+/* Keep the selected outline's geometry ready to interpolate without replacing
+   the existing keyboard focus outline. Outlines do not affect card layout. */
+.wallpaper-gallery .wallpaper-choice:not([aria-pressed="true"]):not(:focus-visible) {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+/* New nodes get this only for a deliberate category / show-more action. */
+.choice-control .choice-content-enter {
+  animation: choice-content-in var(--duration) cubic-bezier(.22, 1, .36, 1);
+}
+
+.content.enter > div {
+  animation-name: choice-page-in;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes choice-content-in {
+  from { opacity: .55; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes choice-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* CSS cancels effects already running, including a live OS preference change. */
+html[data-motion="reduced"] .choice-control .choice-card,
+html[data-motion="reduced"] .choice-control .filter-chip,
+html[data-motion="reduced"] .wallpaper-gallery .wallpaper-choice,
+html[data-motion="reduced"] .content.enter > div {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice-control .choice-card,
+  .choice-control .filter-chip,
+  .wallpaper-gallery .wallpaper-choice,
+  .content.enter > div {
+    animation: none !important;
+    transition: none !important;
+  }
+}

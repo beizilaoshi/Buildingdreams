@@ -1,0 +1,7 @@
+.home-account .choice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.home-account .choice-card { padding: 10px 8px; min-height: 42px; }
+.home-account .player-summary { margin-top: 16px; }
+.home-account .account-actions { gap: 6px 12px; }
+.home-account .account-actions button { white-space: normal; }
+.home-account .player-info { min-width: 0; }
+.home-account .player-info h3 { overflow-wrap: anywhere; }

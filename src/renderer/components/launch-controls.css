@@ -1,0 +1,15 @@
+.game-card .launch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.game-card .launch-controls > button {
+  min-width: 0;
+  width: 100%;
+  padding: 9px 12px;
+}
+.game-card .launch-controls > p {
+  flex-basis: 100%;
+  margin: 0;
+}

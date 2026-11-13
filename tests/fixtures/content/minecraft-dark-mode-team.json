@@ -1,0 +1,33 @@
+[
+  {
+    "role": "Owner",
+    "team_id": "jQokkZHU",
+    "user": {
+      "id": "NaVaoTU6",
+      "username": "Supr",
+      "avatar_url": "https://cdn.modrinth.com/data/NaVaoTU6/1a1abe1a7dbca233fcb73f549b7d8bddc564586c_96.webp",
+      "raw_avatar_url": "https://cdn.modrinth.com/data/NaVaoTU6/1a1abe1a7dbca233fcb73f549b7d8bddc564586c.png",
+      "bio": null,
+      "created": "2023-07-26T22:12:07.859307Z",
+      "role": "developer",
+      "badges": 0,
+      "campaigns": {
+        "pride_26": null
+      },
+      "auth_providers": null,
+      "email": null,
+      "email_verified": null,
+      "has_password": null,
+      "has_totp": null,
+      "payout_data": null,
+      "stripe_customer_id": null,
+      "allow_friend_requests": null,
+      "eligibility_verified_at": null,
+      "github_id": null
+    },
+    "permissions": null,
+    "accepted": true,
+    "payouts_split": null,
+    "ordering": 0
+  }
+]

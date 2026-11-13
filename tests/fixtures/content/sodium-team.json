@@ -1,0 +1,20 @@
+[
+  {
+    "user": {
+      "username": "IMS"
+    },
+    "role": "Maintainer"
+  },
+  {
+    "user": {
+      "username": "jellysquid3"
+    },
+    "role": "Project Lead"
+  },
+  {
+    "user": {
+      "username": "douira"
+    },
+    "role": "Maintainer"
+  }
+]

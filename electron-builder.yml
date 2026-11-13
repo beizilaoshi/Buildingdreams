@@ -1,0 +1,40 @@
+appId: cn.beizilaoshi.zhumeng
+productName: 筑梦启动器
+directories:
+  output: release
+files:
+  - dist/**/*
+  - package.json
+asar: true
+extraResources:
+  - from: tools/pcl-bridge/bin/Release
+    to: pcl-bridge
+    filter:
+      - PclBridge.exe
+      - 0Harmony.dll
+  - from: tools/pcl-bridge/third-party
+    to: notices/pcl-bridge
+    filter:
+      - Lib.Harmony.LICENSE
+      - PROVENANCE.md
+  - from: THIRD-PARTY-NOTICES.md
+    to: notices/THIRD-PARTY-NOTICES.md
+  - from: ASSET-SOURCES.md
+    to: notices/ASSET-SOURCES.md
+  - from: public/runtime-dependencies.json
+    to: notices/runtime-dependencies.json
+  - from: public/licenses.txt
+    to: notices/licenses.txt
+  - from: notices
+    to: notices/supplemental
+win:
+  icon: build/icon.ico
+  target:
+    - portable
+    - nsis
+nsis:
+  artifactName: 'Buildingdreams-${version}-${arch}-nsis.${ext}'
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+portable:
+  artifactName: 'Buildingdreams-${version}-${arch}-portable.${ext}'

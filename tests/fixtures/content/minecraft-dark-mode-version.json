@@ -1,0 +1,40 @@
+{
+  "game_versions": [
+    "1.16.2",
+    "1.16.3",
+    "1.16.4",
+    "1.16.5"
+  ],
+  "loaders": [
+    "minecraft"
+  ],
+  "environment": "unknown",
+  "id": "PVhKjz1t",
+  "project_id": "9wyd4FMB",
+  "author_id": "NaVaoTU6",
+  "featured": true,
+  "name": "Dark mode 1.7 MC 1.16.2-1.16.5",
+  "version_number": "1.7",
+  "changelog": "## What's changed\n\n**fixed all toasts textures**\n\n## What's included \n### (in current version)\n**Base** **__dark mode__** **resource pack.**\n\n**__Dark__** **mojang loading screen** (optifine only)\n\n[**ClothConfig**](https://modrinth.com/mod/cloth-config) **support.** \n\n[**ModMenu**](https://modrinth.com/mod/modmenu) **support.**\n",
+  "changelog_url": null,
+  "date_published": "2023-09-05T01:08:21.841354Z",
+  "downloads": 5934,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+    {
+      "id": "9s1Ceeu7",
+      "hashes": {
+        "sha512": "61c0d95822f7aaaf3aba00cb7dc72dd7cb3549c76646e7458ac3cc464f5c52c9c2e44bffeab91b337f083a01533077ffdd8afe6164fd79b27bb9809146b1a708",
+        "sha1": "482ee4557cb331c13ff20295eaeb0b622b35d094"
+      },
+      "url": "https://cdn.modrinth.com/data/9wyd4FMB/versions/PVhKjz1t/%C2%A7f%C2%A7lDark%20%C2%A7lmode%21%201.16.2-1.16.5.zip",
+      "filename": "§f§lDark §lmode! 1.16.2-1.16.5.zip",
+      "primary": true,
+      "size": 226108,
+      "file_type": null
+    }
+  ],
+  "dependencies": []
+}

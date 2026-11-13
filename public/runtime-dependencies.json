@@ -1,0 +1,429 @@
+[
+  {
+    "name": "@types/http-cache-semantics",
+    "version": "4.2.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "directory": "types/http-cache-semantics"
+    },
+    "packagePath": "node_modules/@types/http-cache-semantics",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@types/node",
+    "version": "24.19.2",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "directory": "types/node"
+    },
+    "packagePath": "node_modules/@types/node",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@types/yauzl",
+    "version": "2.10.3",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "directory": "types/yauzl"
+    },
+    "packagePath": "node_modules/@types/yauzl",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@xmcl/asm",
+    "version": "1.0.1",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
+    },
+    "packagePath": "node_modules/@xmcl/asm",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@xmcl/core",
+    "version": "2.15.1",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
+    },
+    "packagePath": "node_modules/@xmcl/core",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@xmcl/file-transfer",
+    "version": "2.0.3",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
+    },
+    "packagePath": "node_modules/@xmcl/file-transfer",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@xmcl/forge-site-parser",
+    "version": "2.0.9",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
+    },
+    "packagePath": "node_modules/@xmcl/forge-site-parser",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@xmcl/installer",
+    "version": "6.1.2",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
+    },
+    "packagePath": "node_modules/@xmcl/installer",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@xmcl/task",
+    "version": "4.1.1",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
+    },
+    "packagePath": "node_modules/@xmcl/task",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "@xmcl/unzip",
+    "version": "2.1.2",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
+    },
+    "packagePath": "node_modules/@xmcl/unzip",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "boolbase",
+    "version": "1.0.0",
+    "license": "ISC",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/fb55/boolbase"
+    },
+    "packagePath": "node_modules/boolbase",
+    "licenseFiles": []
+  },
+  {
+    "name": "buffer-crc32",
+    "version": "0.2.13",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/brianloveswords/buffer-crc32.git"
+    },
+    "packagePath": "node_modules/buffer-crc32",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "buffer-crc32",
+    "version": "1.0.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/brianloveswords/buffer-crc32.git"
+    },
+    "packagePath": "node_modules/yazl/node_modules/buffer-crc32",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "css-select",
+    "version": "5.2.2",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/fb55/css-select.git"
+    },
+    "packagePath": "node_modules/css-select",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "css-what",
+    "version": "6.2.2",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/fb55/css-what"
+    },
+    "packagePath": "node_modules/css-what",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "dom-serializer",
+    "version": "2.0.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/cheeriojs/dom-serializer.git"
+    },
+    "packagePath": "node_modules/dom-serializer",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "domelementtype",
+    "version": "2.3.0",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/fb55/domelementtype.git"
+    },
+    "packagePath": "node_modules/domelementtype",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "domhandler",
+    "version": "5.0.3",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/fb55/domhandler.git"
+    },
+    "packagePath": "node_modules/domhandler",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "domutils",
+    "version": "3.2.2",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/fb55/domutils.git"
+    },
+    "packagePath": "node_modules/domutils",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "electron",
+    "version": "45.2.1",
+    "license": "MIT",
+    "repository": "https://github.com/electron/electron",
+    "packagePath": "node_modules/electron",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "entities",
+    "version": "4.5.0",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/fb55/entities.git"
+    },
+    "packagePath": "node_modules/entities",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "fd-slicer",
+    "version": "1.1.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/andrewrk/node-fd-slicer.git"
+    },
+    "packagePath": "node_modules/fd-slicer",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "he",
+    "version": "1.2.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/mathiasbynens/he.git"
+    },
+    "packagePath": "node_modules/he",
+    "licenseFiles": [
+      "LICENSE-MIT.txt"
+    ]
+  },
+  {
+    "name": "http-cache-semantics",
+    "version": "4.3.0",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/kornelski/http-cache-semantics.git"
+    },
+    "packagePath": "node_modules/http-cache-semantics",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "node-html-parser",
+    "version": "6.1.13",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/taoqf/node-fast-html-parser.git"
+    },
+    "packagePath": "node_modules/node-html-parser",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "nth-check",
+    "version": "2.1.1",
+    "license": "BSD-2-Clause",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/fb55/nth-check"
+    },
+    "packagePath": "node_modules/nth-check",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pend",
+    "version": "1.2.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/andrewrk/node-pend.git"
+    },
+    "packagePath": "node_modules/pend",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pngjs",
+    "version": "7.0.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/pngjs/pngjs.git"
+    },
+    "packagePath": "node_modules/pngjs",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "undici",
+    "version": "7.30.1",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/nodejs/undici.git"
+    },
+    "packagePath": "node_modules/undici",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "undici-types",
+    "version": "7.24.6",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/nodejs/undici.git"
+    },
+    "packagePath": "node_modules/undici-types",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "yauzl",
+    "version": "2.10.0",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/thejoshwolfe/yauzl.git"
+    },
+    "packagePath": "node_modules/yauzl",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "yazl",
+    "version": "2.5.1",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/thejoshwolfe/yazl.git"
+    },
+    "packagePath": "node_modules/@xmcl/installer/node_modules/yazl",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "yazl",
+    "version": "3.3.1",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/thejoshwolfe/yazl.git"
+    },
+    "packagePath": "node_modules/yazl",
+    "licenseFiles": [
+      "LICENSE"
+    ]
+  }
+]

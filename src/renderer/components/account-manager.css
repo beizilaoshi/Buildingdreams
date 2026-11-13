@@ -1,0 +1,10 @@
+.account-error {
+  color: #802525;
+  background: #fff0ed;
+  border-radius: 8px;
+  padding: 8px 12px;
+  line-height: 1.6;
+}
+.account-error:empty {
+  display: none;
+}

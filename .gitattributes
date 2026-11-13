@@ -1,0 +1,3 @@
+# Preserve upstream license text verbatim, including its original line-end spaces.
+public/licenses.txt whitespace=-blank-at-eol
+notices/PCL-LICENCE -text
