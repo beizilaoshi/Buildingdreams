@@ -1,6 +1,6 @@
 {
   "name": "zhumeng-launcher",
-  "version": "0.0.1-preview.1",
+  "version": "0.0.1-preview.2",
   "private": true,
   "description": "筑梦启动器",
   "author": "杯艺宣",
@@ -10,10 +10,12 @@
     "build": "node scripts/licenses.mjs && tsc -p tsconfig.main.json && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dist": "npm run build && electron-builder --win",
+    "dist": "npm run installer:art && npm run build && electron-builder --win dir portable --x64 && node scripts/build-installer.mjs",
     "verify": "npm run typecheck && npm test && npm run build && playwright test tests/ui.spec.ts && playwright test --config tests/usability.config.ts",
     "smoke:network": "npm run build && node scripts/smoke-network.ts",
     "verify:package": "node scripts/verify-package.mjs",
+    "verify:installer-config": "vitest run tests/installer-config.test.ts",
+    "installer:art": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-installer-art.ps1",
     "smoke:shell": "npm run build && electron scripts/smoke-shell.cjs",
     "test:ui": "npm run build && playwright test tests/ui.spec.ts && playwright test --config tests/usability.config.ts"
   },

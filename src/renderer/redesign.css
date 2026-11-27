@@ -1,0 +1,169 @@
+/* Clearer hierarchy for the launcher shell and game library. */
+.navigation {
+  width: 98px !important;
+  align-items: stretch !important;
+  padding: 22px 11px 14px !important;
+  gap: 10px !important;
+  border-radius: 0 20px 20px 0;
+  background: linear-gradient(180deg, rgba(var(--surface), .86), rgba(var(--surface), .72)) !important;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.navigation::-webkit-scrollbar { display: none; }
+.nav-logo { align-self: center; width: 58px; height: 58px; flex-shrink: 0; margin: 0 0 12px !important; }
+.nav-group { display: grid; gap: 4px; }
+.nav-group[hidden] { display: none; }
+.nav-group-label {
+  padding: 7px 10px 3px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .78;
+}
+.nav-item,
+html[data-labels="false"] .nav-item,
+html[data-density="compact"] .nav-item {
+  flex: none !important;
+  min-height: 42px !important;
+  width: 100% !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  text-align: left !important;
+  font-size: 12px !important;
+}
+.nav-icon { width: 22px; flex: 0 0 22px; font-size: 19px !important; line-height: 22px !important; }
+.nav-label, html[data-labels="false"] .nav-label { display: inline !important; }
+.nav-item.active {
+  color: var(--ink) !important;
+  border-color: color-mix(in srgb, var(--accent), transparent 68%);
+  background: color-mix(in srgb, var(--accent), transparent 87%) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent), transparent 92%);
+}
+.nav-item, html[data-labels="false"] .nav-item, html[data-density="compact"] .nav-item {
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  padding-inline: 6px !important;
+  white-space: nowrap !important;
+  overflow: hidden;
+}
+.nav-icon { flex: 0 0 20px; width: 20px; font-size: 18px !important; }
+.nav-label, html[data-labels="false"] .nav-label { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.nav-item.active:before { left: -12px !important; top: 10px !important; height: 22px !important; }
+.nav-footer { margin-top: auto !important; text-align: center; }
+.content { padding-left: 0 !important; }
+.home-page .glass {
+  border-color: rgba(245, 248, 255, .4);
+  background: linear-gradient(135deg, rgba(245,248,255,.68), rgba(225,233,252,.56)) !important;
+  box-shadow: 0 14px 40px rgba(12, 18, 44, .16), inset 0 1px 0 rgba(255,255,255,.58);
+  color: #243451;
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+.home-page .glass .muted { color: #536580; }
+.home-page .launch-panel .row { flex-wrap: wrap; }
+.launch-panel .launch-button { min-width: 168px; border-radius: 13px; box-shadow: 0 8px 20px color-mix(in srgb, var(--accent), transparent 72%); }
+.home-aside { min-width: 0; }
+.account-actions { flex-wrap: wrap; }
+.library-grid { gap: 16px; }
+.game-card {
+  padding: 0 18px 18px;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--line), transparent 24%);
+  background: linear-gradient(145deg, rgba(var(--surface), .9), rgba(var(--surface), .68));
+  box-shadow: 0 10px 28px rgba(16, 28, 54, .09);
+}
+.game-art { margin: 0 -18px 16px; height: 116px; }
+.game-card h2 { line-height: 1.3; }
+.game-card .game-data-path { overflow-wrap: anywhere; }
+.game-card-actions { display: grid; gap: 9px; margin-top: auto; padding-top: 15px; }
+.game-card-actions .launch-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.game-card-actions .launch-controls > button:first-child { min-height: 38px; }
+.game-card-actions .launch-controls > button:nth-child(2) { min-height: 34px; }
+.game-card-actions .launch-controls [role="status"] { grid-column: 1 / -1; margin: 0; font-size: 11px; }
+.game-card-secondary { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.game-card-secondary > button { min-height: 34px; }
+.game-card-secondary > button[data-select-instance] { flex: 1; }
+.game-card-secondary .current-game-label { color: var(--accent); border-color: color-mix(in srgb, var(--accent), transparent 65%); background: color-mix(in srgb, var(--accent), transparent 92%); cursor: default; }
+.game-card-secondary .icon-button { flex: 0 0 38px; }
+.game-card-secondary > button:last-child { flex: 0 0 auto; }
+.instance-manager-page { display: grid; align-content: start; gap: 16px; min-height: 100%; padding: 8px 0 28px; }
+.manager-back { justify-self: start; padding: 8px 12px; }
+.instance-manager-page .page-heading { margin: 0 0 2px; }
+.instance-manager-page .page-heading h1 { margin-top: 2px; }
+.manager-target { display: grid; grid-template-columns: auto minmax(220px, 1fr); gap: 16px; align-items: center; padding: 14px 18px; }
+.manager-content { min-width: 0; padding: 20px; }
+.manager-content > h2 { margin-bottom: 4px; }
+.manager-content > .muted { margin-bottom: 14px; }
+.manager-content .world-backups { width: 100%; min-width: 0; max-height: none; overflow: visible; }
+.manager-content .world-backup-list { max-height: min(52vh, 560px); }
+.manager-content .local-mods { display: grid; gap: 12px; }
+.manager-content .local-mod-list { max-height: min(58vh, 640px); overflow: auto; }
+.manager-content .local-mod-tools { flex-wrap: wrap; }
+.instance-cover-settings { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px 14px; }
+.instance-cover-settings h3, .instance-cover-settings > p { grid-column: 1 / -1; }
+.instance-cover-preview { height: 128px; min-width: 200px; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: url('/assets/moonlake.png') center 60% / cover; }
+.instance-cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.game-art.has-cover { background: #10182a; }
+.instance-cover-image { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; }
+.game-art.has-cover::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(12,18,35,.02) 28%, rgba(12,18,35,.48)); pointer-events: none; }
+.game-art.has-cover .version-watermark, .game-art.has-cover .badge { z-index: 2; }
+.game-art.has-cover .instance-library-icon { display: none; }
+@media (max-width: 1050px), (max-height: 710px) {
+  .navigation { width: 86px !important; padding: 14px 6px 10px !important; }
+  .nav-item, html[data-labels="false"] .nav-item, html[data-density="compact"] .nav-item { min-height: 36px !important; padding: 6px 5px !important; gap: 6px !important; }
+  .nav-label, html[data-labels="false"] .nav-label { font-size: 9px; }
+  .nav-group-label { padding-left: 5px; font-size: 9px; }
+}
+@media (max-height: 710px) {
+  .home-lower { transform: translateY(16px); }
+  .home-lower .launch-panel, .home-lower .home-aside { padding-block: 4px; }
+  .home-lower .launch-panel h2 { margin-top: 8px; }
+  .home-lower .launch-panel .row { margin-top: 10px; }
+  .home-lower .account-actions { margin-top: 0; }
+  .home-account .choice-card { min-height: 34px; padding-block: 4px; }
+  .home-account .player-summary { margin-top: 8px; }
+}
+.home-account .choice-card,
+.account-actions button,
+.game-card-actions button { white-space: nowrap; }
+.home-account .choice-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.home-account .choice-card { min-width: 0; padding-inline: 3px; font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
+.home-account .account-actions button { padding-block: 4px; }
+.home-account .player-info h3,
+.home-account .player-info p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-card-actions button { overflow: hidden; text-overflow: ellipsis; }
+.home-page .eyebrow { color: #506da9; }
+.home-page .launch-status { color: #405783; }
+@media (max-width: 760px) {
+  .navigation { width: 82px !important; }
+  .nav-group-label { display: none; }
+  .nav-item, html[data-labels="false"] .nav-item, html[data-density="compact"] .nav-item { flex-direction: row !important; min-height: 36px !important; padding: 4px 2px !important; gap: 3px !important; font-size: 9px !important; white-space: nowrap; }
+  .nav-icon { width: 20px; flex: 0 0 20px; font-size: 17px !important; }
+  .nav-label { display: inline !important; overflow: hidden; text-overflow: ellipsis; }
+  .nav-item { justify-content: flex-start !important; }
+  .library-grid { grid-template-columns: 1fr; }
+  .manager-target { grid-template-columns: 1fr; gap: 8px; }
+  .manager-content { padding: 14px; }
+  .instance-cover-settings { grid-template-columns: 1fr 1fr; }
+  .instance-cover-preview { grid-column: 1 / -1; width: 100%; }
+}
+@media (max-width: 1050px), (max-height: 710px) {
+  nav.navigation .nav-group .nav-item,
+  nav.navigation .nav-group .nav-item.active { flex-direction: row !important; flex-wrap: nowrap !important; white-space: nowrap !important; }
+  nav.navigation .nav-group .nav-label { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; }
+}
+/* Final responsive shell rules override legacy fixed-width media queries. */
+html[data-customization="ready"] .app-shell { width:100%; max-width:none; min-width:0; margin:0; padding:0 20px 20px; gap:20px; }
+html[data-customization="ready"] .navigation { width:clamp(74px,min(var(--nav-width),24vw),180px)!important; min-width:0; flex:0 0 clamp(74px,min(var(--nav-width),24vw),180px); }
+html[data-customization="ready"] .content { flex:1 1 0; width:0; min-width:0; padding-inline:0; }
+html[data-customization="ready"] .content > * { min-width:0; max-width:100%; }
+html[data-customization="ready"] :is(.panel,.game-card,.customization-section-head,.customization-toolbar) { min-width:0; }
+html[data-customization="ready"] .customization-workbench .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media(max-width:1100px) { html[data-customization="ready"] .app-shell { padding:0 14px 14px; gap:14px; } html[data-customization="ready"] .customization-workbench .form-grid { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:760px) { html[data-customization="ready"] .app-shell { padding:0 8px 8px; gap:8px; } html[data-customization="ready"] .navigation { width:74px!important; flex-basis:74px; } html[data-customization="ready"] .customization-workbench .panel { padding:14px; } }

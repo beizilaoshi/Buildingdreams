@@ -1,7 +1,7 @@
 import "./styles.css";
 import { api, state, refresh, e, button, go, notify } from "./ui";
 import { applySettings, installGlass } from "./components/glass";
-import { playOpening } from "./components/opening";
+import { playOpening, revealStartupWindow } from "./components/opening";
 import { home } from "./views/home";
 import { library } from "./views/library";
 import { download } from "./views/download";
@@ -13,6 +13,10 @@ import { packs } from "./views/packs";
 import { personalize } from "./views/personalize";
 import { settings } from "./views/settings";
 import { about } from "./views/about";
+import { instanceMods, instanceSaves } from "./views/instance-managers";
+import { getMusicController } from './components/music';
+import { showDiagnostics } from './components/diagnostics';
+import "./redesign.css";
 const views: Record<string, () => HTMLElement> = {
   home,
   library,
@@ -22,19 +26,21 @@ const views: Record<string, () => HTMLElement> = {
   personalize,
   settings,
   about,
+  instanceMods,
+  instanceSaves,
 };
-const labels = [
-  ["home", "⌂", "首页"],
-  ["library", "▦", "游戏库"],
-  ["download", "↓", "下载"],
-  ["mods", "◇", "模组"],
-  ["packs", "▧", "整合包"],
-  ["personalize", "✧", "个性化"],
-  ["settings", "⚙", "设置"],
-  ["about", "ⓘ", "关于"],
-];
+const navGroups = [
+  ["启动", [["home", "⌂", "首页"], ["library", "▦", "游戏库"], ["download", "↓", "下载"]]],
+  ["内容", [["mods", "◇", "模组"], ["packs", "▧", "整合包"]]],
+  ["偏好", [["personalize", "✧", "个性化"], ["settings", "⚙", "设置"], ["about", "ⓘ", "关于"]]],
+] as const;
 const app = document.querySelector("#app")!;
 const title = e("header", "titlebar");
+const titleImage = document.createElement('img');
+titleImage.className = 'window-title-image';
+titleImage.alt = '';
+titleImage.hidden = true;
+title.append(titleImage);
 title.append(e("span", "window-brand", "筑梦 · ZHUMENG"));
 const controls = e("div", "window-controls");
 for (const [action, label] of [
@@ -57,16 +63,23 @@ const shell = e("div", "app-shell");
 const nav = e("nav", "glass navigation");
 nav.setAttribute("aria-label", "主导航");
 const logo = document.createElement("img");
-logo.src = "./assets/logos/zhumeng-generated.png";
+logo.src = "./assets/logos/zhumeng-mengmiao.png";
 logo.alt = "筑梦";
 logo.className = "nav-logo";
 nav.append(logo);
-for (const [id, icon, label] of labels) {
-  const item = button("", () => go(id), "nav-item");
-  item.dataset.page = id;
-  item.setAttribute("aria-label", label);
-  item.append(e("span", "nav-icon", icon), e("span", "nav-label", label));
-  nav.append(item);
+for (const [groupLabel, entries] of navGroups) {
+  const group = e("section", "nav-group");
+  group.setAttribute("aria-label", groupLabel);
+  group.append(e("span", "nav-group-label", groupLabel));
+  for (const [id, icon, label] of entries) {
+    const item = button("", () => go(id), "nav-item");
+    item.dataset.page = id;
+    item.setAttribute("aria-label", label);
+    item.title = label;
+    item.append(e("span", "nav-icon", icon), e("span", "nav-label", label));
+    group.append(item);
+  }
+  nav.append(group);
 }
 const versionFooter = e('span', 'nav-footer', '筑梦');
 nav.append(versionFooter);
@@ -75,26 +88,42 @@ void updateFooter();
 setInterval(() => void updateFooter(), 5000);
 const indicator = e("div", "nav-indicator");
 nav.append(indicator);
+let revealNavigation=false;
+function updateNavigation(){
+ if(!state.settings)return;
+ for(const item of Array.from(nav.querySelectorAll<HTMLElement>('[data-page]'))){item.hidden=!revealNavigation&&state.settings.navigationHidden.includes(item.dataset.page as any);item.style.display=item.hidden?'none':'';}
+ for(const group of Array.from(nav.querySelectorAll<HTMLElement>('.nav-group')))group.hidden=!Array.from(group.querySelectorAll<HTMLElement>('[data-page]')).some(item=>!item.hidden);
+ const brand=title.querySelector('.window-brand');if(brand)brand.textContent=state.settings.titleText||'筑梦 · ZHUMENG';
+ const image=state.settings.titleImage;
+ titleImage.hidden=!image;
+ if(image){titleImage.src=image;titleImage.style.height=`${state.settings.titleImageHeight}px`;}else titleImage.removeAttribute('src');
+ logo.title=state.settings.navigationHidden.length?'按 F12 临时显示全部导航':'筑梦启动器';
+ const active=nav.querySelector<HTMLElement>('.nav-item.active');indicator.hidden=!active||active.hidden;if(active&&!active.hidden)indicator.style.top=`${active.offsetTop+(active.offsetHeight-23)/2}px`;
+}
+window.addEventListener('launcher-settings',updateNavigation);
+window.addEventListener('keydown',event=>{if(event.key==='F12'){event.preventDefault();revealNavigation=!revealNavigation;updateNavigation();}});
 const main = e("main", "content");
 shell.append(nav, main);
 app.append(shell);
 function render(page: string) {
   if (!views[page]) return;
   state.page = page;
+  const navigationPage = page === 'instanceMods' || page === 'instanceSaves' ? 'library' : page;
   for (const item of Array.from(
     nav.querySelectorAll<HTMLElement>("[data-page]"),
   )) {
-    item.classList.toggle("active", item.dataset.page === page);
+    item.classList.toggle("active", item.dataset.page === navigationPage);
     item.setAttribute(
       "aria-current",
-      item.dataset.page === page ? "page" : "false",
+      item.dataset.page === navigationPage ? "page" : "false",
     );
-    if (item.dataset.page === page)
+    if (item.dataset.page === navigationPage)
       indicator.style.top = `${item.offsetTop + (item.offsetHeight - 23) / 2}px`;
   }
   main.replaceChildren(views[page]());
   main.scrollTop = 0;
   main.classList.remove("enter");
+  updateNavigation();
   requestAnimationFrame(() => main.classList.add("enter"));
 }
 window.addEventListener("navigate", (event) =>
@@ -103,9 +132,23 @@ window.addEventListener("navigate", (event) =>
 async function init() {
   try {
     const launchPhases=new Map<string,string>();
+    const diagnosedLaunches=new Set<string>();
     window.launcher.onLaunch(snapshot=>{
+      if(snapshot.phase==='preparing')diagnosedLaunches.delete(snapshot.instanceId);
       const previous=launchPhases.get(snapshot.instanceId);launchPhases.set(snapshot.instanceId,snapshot.phase);
-      if(previous!==snapshot.phase&&snapshot.phase==='exited')notify(snapshot.code===0?'游戏正常退出':'游戏已退出，请查看启动日志',{kind:snapshot.code===0?'success':'warning'});
+      if(previous!==snapshot.phase&&snapshot.phase==='exited'){
+        notify(snapshot.code===0?'游戏正常退出':'游戏异常退出，正在检查日志…',{kind:snapshot.code===0?'success':'warning'});
+        if(snapshot.code!==0&&!diagnosedLaunches.has(snapshot.instanceId)){
+          diagnosedLaunches.add(snapshot.instanceId);
+          // Give Minecraft a moment to flush crash-reports/latest.log before the automatic scan.
+          setTimeout(()=>{void showDiagnostics(snapshot.instanceId,'游戏异常排查',true).catch(notify);},1200);
+        }
+      }
+      if(previous!==snapshot.phase&&snapshot.phase==='failed'&&!diagnosedLaunches.has(snapshot.instanceId)){
+        diagnosedLaunches.add(snapshot.instanceId);
+        notify('游戏启动失败，正在分析启动日志…',{kind:'error'});
+        setTimeout(()=>{void showDiagnostics(snapshot.instanceId,'启动失败排查',true).catch(notify);},800);
+      }
       if(previous!==snapshot.phase&&snapshot.phase==='cancelled')notify('所选游戏启动或运行已停止',{kind:'info'});
       for(const node of Array.from(main.querySelectorAll<HTMLElement>('.launch-controls')))if(node.dataset.instance===snapshot.instanceId)node.dispatchEvent(new CustomEvent('launch-state',{detail:snapshot}));
     });
@@ -174,6 +217,7 @@ async function init() {
     state.settings = await api("settings.read", undefined);
     applySettings(state.settings);
     await refresh();
+    void getMusicController().initialize().catch(notify);
     transitions.bootstrap(state.tasks);
     bootstrapping = false;
     const historicalTerminal = new Set(state.tasks.filter(task => ["completed", "failed", "cancelled"].includes(task.status)).map(task => task.id));
@@ -182,8 +226,7 @@ async function init() {
     feedbackUi.update();
     render(state.settings.startupPage);
     installGlass();
-    void playOpening(state.settings);
-    document.documentElement.classList.remove("booting");
+    await revealStartupWindow(state.settings);
     noticeReady = true;
     for (const notice of notices.splice(0)) noticeCard(notice);
     for (const query of [

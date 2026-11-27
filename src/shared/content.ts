@@ -15,8 +15,9 @@ export interface ResourceInstall {
   worldId?: string;
 }
 export type ContentProvider = "modrinth" | "curseforge";
+export type ContentSearchProvider = "all" | ContentProvider;
 export interface ContentFilter {
-  provider?: ContentProvider;
+  provider?: ContentSearchProvider;
   projectType?: ContentKind;
   tag?: string;
   minecraft?: string;
@@ -44,6 +45,7 @@ export interface SearchPage {
   limit: number;
   total_hits: number;
   mappingNotice?: string;
+  sources?: { provider: ContentProvider; status: "available" | "failed" | "unsupported"; total?: number; message?: string }[];
 }
 export interface ContentVersion {
   provider?: ContentProvider;

@@ -4,7 +4,7 @@ const { app, nativeImage } = require('electron');
 const { mkdirSync, writeFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 app.whenReady().then(() => {
-  const source = nativeImage.createFromPath(resolve(__dirname, '../public/assets/logos/zhumeng-generated.png'));
+  const source = nativeImage.createFromPath(resolve(__dirname, '../public/assets/logos/zhumeng-mengmiao.png'));
   if (source.isEmpty()) throw new Error('Generated brand PNG is missing or invalid');
   const sizes = [16, 24, 32, 48, 64, 128, 256];
   const pngs = sizes.map(size => source.resize({ width: size, height: size, quality: 'best' }).toPNG());

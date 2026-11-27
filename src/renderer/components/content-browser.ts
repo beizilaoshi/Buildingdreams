@@ -5,6 +5,7 @@ import { api, selected, e, button, input, field, panel, notify } from "../ui";
 import type {
   ContentFilter,
   ContentKind,
+  ContentSearchProvider,
   SearchPage,
 } from "../../shared/content";
 import { projectRow, type ProjectIdentity } from "./content-project-row";
@@ -20,7 +21,7 @@ interface SearchRequest {
   page: number;
 }
 interface SearchState {
-  provider: "modrinth" | "curseforge";
+  provider: ContentSearchProvider;
   draft: SearchFilters;
   request?: SearchRequest;
   response?: SearchPage;
@@ -178,6 +179,8 @@ export function contentSearch(type: ContentKind) {
         `${response.total_hits.toLocaleString()} 个项目 · 第 ${request.page + 1} 页`,
       ),
     );
+    for (const source of response.sources ?? [])
+      results.append(e("p", "muted content-source-status", `${source.provider === "modrinth" ? "Modrinth" : "CurseForge"}：${source.status === "available" ? `${source.total?.toLocaleString()} 个项目` : source.message ?? "不可用"}`));
     if (response.mappingNotice)
       results.append(e("p", "muted", response.mappingNotice));
     for (const hit of response.hits)
@@ -248,6 +251,7 @@ export function contentSearch(type: ContentKind) {
           `搜索失败：${error instanceof Error ? error.message : String(error)}`,
         ),
         button("重试搜索", () => search(request.page, true), "quiet"),
+        ...(saved.provider === "all" ? [button("从第一页重新搜索", () => search(0, true), "quiet")] : []),
         ...(saved.provider === "curseforge"
           ? [
               e(
@@ -269,7 +273,7 @@ export function contentSearch(type: ContentKind) {
   const tagButton = (tag: ContentTag) => {
     const tile = button(
       tag.label +
-        (tag[saved.provider]
+        ((saved.provider === "all" || tag[saved.provider])
           ? ""
           : saved.provider === "modrinth"
             ? " · 仅 CurseForge"
@@ -277,9 +281,9 @@ export function contentSearch(type: ContentKind) {
       () => selectTag(tag),
       "quiet filter-chip",
     );
-    tile.disabled = !tag[saved.provider];
+    tile.disabled = !(saved.provider === "all" || tag[saved.provider]);
     tile.setAttribute("aria-pressed", String(saved.draft.tag === tag.id));
-    if (!tag[saved.provider]) tile.title = "此标签不支持当前来源";
+    if (!(saved.provider === "all" || tag[saved.provider])) tile.title = "此标签不支持当前来源";
     return tile;
   };
   const renderTags = () => {
@@ -341,7 +345,7 @@ export function contentSearch(type: ContentKind) {
             grid.replaceChildren(
               ...matches.slice(0, limit).map((t) => {
                 const tile = tagButton(t);
-                if (t[saved.provider])
+                if ((saved.provider === "all" || t[saved.provider]))
                   tile.onclick = () => {
                     modal.close();
                     selectTag(t);
@@ -388,6 +392,7 @@ export function contentSearch(type: ContentKind) {
   };
   const provider = choice(
     [
+      ["all", "全部来源"],
       ["modrinth", "Modrinth"],
       ["curseforge", "CurseForge"],
     ],

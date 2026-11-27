@@ -1,10 +1,10 @@
 import { DEFAULT_SETTINGS, validateSettingsPatch } from './settings';
 import type { AppearanceProfile, Settings } from './types';
 export const APPEARANCE_GROUPS = {
-  background: ['wallpaper','wallpaperFit','wallpaperBrightness','wallpaperBlur','backgroundStyle','backgroundColor','gradientColor','backgroundOverlay','backgroundVignette','wallpaperSaturation','wallpaperPositionX','wallpaperPositionY','wallpaperScale','backgroundAnimation','backgroundMotionIntensity','backgroundMotionSpeed','backgroundEffect','backgroundQuality'],
+  background: ['wallpaper','wallpaperFit','wallpaperBrightness','wallpaperBlur','backgroundStyle','backgroundColor','gradientColor','gradientAnimation','gradientSpeed','backgroundOverlay','backgroundVignette','wallpaperSaturation','wallpaperPositionX','wallpaperPositionY','wallpaperScale','backgroundAnimation','backgroundMotionIntensity','backgroundMotionSpeed','backgroundEffect','backgroundQuality'],
   material: ['theme','glassOpacity','glassBlur','glassRefraction','glassStyle','glassBorderOpacity','glassShadow','accentColor','cornerRadius'],
   layout: ['density','navigationLabels','libraryView','fontFamily','fontScale','navWidth','contentWidth','cardSpacing'],
-  home: ['homeTitle','homeSubtitle','homeTitleSize','homeTextAlign','showHomeIntro'],
+  home: ['homeTitle','homeSubtitle','homeTitleSize','homeTextAlign','showHomeIntro','rainbowText'],
   motion: ['openingTheme','openingSpeed','openingEnabled','particles','parallax','animationSpeed','reducedMotion','pageTransition','notificationPosition'],
 } as const satisfies Record<string, readonly (keyof Settings)[]>;
 export const APPEARANCE_KEYS = Object.values(APPEARANCE_GROUPS).flat();
@@ -30,6 +30,10 @@ export const APPEARANCE_PRESETS: readonly {id:string;name:string;description:str
   {id:'cloud-dawn',name:'云海晨光',description:'手绘云海晨光与轻盈卡片',settings:{theme:'light',wallpaper:'builtin:cloud-dawn',backgroundStyle:'image',backgroundOverlay:0.12,glassStyle:'frosted',accentColor:'#7363ca'}},
   {id:'minimal-dark',name:'极简深色',description:'沉静纯色与克制动效',settings:{theme:'dark',backgroundStyle:'solid',backgroundColor:'#11182e',glassStyle:'solid',particles:false,parallax:false,accentColor:'#93a8ff'}},
   {id:'clear-light',name:'清透浅色',description:'浅色渐变与清透材质',settings:{theme:'light',backgroundStyle:'gradient',backgroundColor:'#dce8ff',gradientColor:'#f3e7fb',glassStyle:'clear',backgroundOverlay:0,accentColor:'#6656ba'}},
+  {id:'sakura-dream',name:'樱花绮梦',description:'樱粉与薄雾紫，柔和玻璃层次',settings:{theme:'light',wallpaper:'builtin:sakura-night',backgroundStyle:'gradient',backgroundColor:'#f5b7d3',gradientColor:'#a89be8',glassStyle:'frosted',accentColor:'#d875ad',gradientAnimation:true,gradientSpeed:1.2}},
+  {id:'aurora-flow',name:'极光流影',description:'深海蓝紫与缓慢流动的极光渐变',settings:{theme:'dark',wallpaper:'builtin:aurora',backgroundStyle:'gradient',backgroundColor:'#102e55',gradientColor:'#7047a8',glassStyle:'frosted',accentColor:'#7de0d0',gradientAnimation:true,gradientSpeed:.7}},
+  {id:'dream-rainbow',name:'彩虹筑梦',description:'柔和彩虹标题与轻快的渐变背景',settings:{theme:'dark',wallpaper:'builtin:moon-lake',backgroundStyle:'gradient',backgroundColor:'#263b72',gradientColor:'#8d4f9f',glassStyle:'frosted',accentColor:'#a5a9ff',gradientAnimation:true,gradientSpeed:1,rainbowText:true}},
+  {id:'forest-mist',name:'森林薄雾',description:'松林绿与晨雾青，安静清爽',settings:{theme:'dark',wallpaper:'builtin:garden',backgroundStyle:'gradient',backgroundColor:'#173b3b',gradientColor:'#537b75',glassStyle:'frosted',accentColor:'#80d7b7',gradientAnimation:true,gradientSpeed:.6}},
 ];
 export function validateAppearanceProfiles(value: unknown): AppearanceProfile[] {
   if(!Array.isArray(value)||value.length>24) throw Error('个人方案最多24个');

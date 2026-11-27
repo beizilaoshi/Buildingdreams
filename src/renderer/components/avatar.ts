@@ -34,17 +34,17 @@ export function avatar(identity: AccountSummary | undefined) {
   const status = e("p", "muted avatar-status", identity?.kind === "microsoft" ? "获取皮肤中" : "默认头像");
   node.append(canvas, status);
   const current = () => node.isConnected && account()?.id === identity?.id;
-  if (identity?.kind === "microsoft") {
+  if (identity) {
     void api("accounts.appearance", identity.id).then(async (result) => {
       if (!current() || result.accountId !== identity.id) return;
-      if (result.source === "official") {
+      if (result.source !== "default") {
         const image = new Image();
         image.src = result.png;
         await image.decode();
         if (!current()) return;
         drawSkinHead(canvas, image);
         canvas.setAttribute("aria-label", `${identity.name} 的 Minecraft 皮肤头像`);
-        status.textContent = "正版皮肤";
+        status.textContent = result.source === "custom" ? "启动器自定义头像" : "正版皮肤";
       } else status.textContent = result.reason === "unavailable" ? "皮肤暂不可用 · 默认头像" : "未提供皮肤 · 默认头像";
     }).catch(() => { if (current()) status.textContent = "皮肤暂不可用 · 默认头像"; });
   }

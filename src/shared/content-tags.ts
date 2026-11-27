@@ -585,11 +585,11 @@ export const contentTags: Record<ContentKind, ContentTag[]> = {
 export function resolveTag(
   kind: ContentKind,
   id: string,
-  provider: "modrinth" | "curseforge" = "modrinth",
+  provider: "all" | "modrinth" | "curseforge" = "modrinth",
 ): ContentTag {
   const tag = contentTags[kind].find((t) => t.id === id);
   if (!tag) throw new Error("无效内容标签");
-  if (!tag[provider])
+  if (provider !== "all" && !tag[provider])
     throw new Error(
       `此标签不支持当前来源 ${provider === "modrinth" ? "Modrinth" : "CurseForge"}`,
     );

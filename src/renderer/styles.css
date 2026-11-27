@@ -305,6 +305,7 @@ body:after {
   letter-spacing: 2px;
   color: #e2e6f5bf;
 }
+.window-title-image { max-width: 180px; object-fit: contain; pointer-events: none; -webkit-app-region: drag; margin-right: 10px; }
 .window-controls {
   display: flex;
   height: 100%;
@@ -762,7 +763,7 @@ body:after {
   flex-direction: column;
   align-items: end;
   gap: 10px;
-  z-index: 2000;
+  z-index: 2200;
   pointer-events: none;
 }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -803,14 +804,14 @@ html[data-theme="light"] [data-kind="error"] { --notice-color: #ab3047; }
 /* Calm dream gate, then actual interface clipping; no text scaling. */
 .opening { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #171c30; color: #eef0ff; overflow: hidden; }
 .opening-identity { display: flex; flex-direction: column; align-items: center; }
-.opening-identity img { width: 80px; height: 80px; border-radius: 16px; }
+.opening-identity img { width: 112px; height: 112px; border-radius: 24px; box-shadow: 0 14px 48px #10162c55; animation: opening-logo-float 2.4s ease-in-out infinite; }
+@keyframes opening-logo-float { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-5px) scale(1.025); } }
 .opening h1 { font-size: 27px; font-weight: 500; letter-spacing: 8px; padding-left: 8px; margin: 24px 0 9px; }
-.opening .eyebrow { font-size: 10px; letter-spacing: 4px; padding-left: 4px; color: #a3accb; }
 .opening-skip { position: absolute; right: 28px; bottom: 24px; color: #a3accb; font-size: 12px; }
 .opening.revealing { background: transparent; }
 html[data-theme="light"] .opening { background: #edf0fa; color: #29334e; }
 html[data-theme="light"] .opening.revealing { background: transparent; }
-html[data-theme="light"] .opening .eyebrow, html[data-theme="light"] .opening-skip { color: #626d89; }
+html[data-theme="light"] .opening-skip { color: #626d89; }
 
 .no-parallax .glass:before {
   display: none;

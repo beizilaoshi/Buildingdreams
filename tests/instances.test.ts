@@ -110,6 +110,25 @@ it("honors existing PCL explicit isolation preferences before automatic layout i
   }
 });
 
+it("switches version isolation between shared root and per-version data without moving either folder", async () => {
+  const root = await fixture();
+  const service = new InstanceService();
+  const [item] = await service.importDirectory(root);
+  const sharedWorld = join(root, "saves", "Shared", "level.dat");
+  await mkdir(join(root, "saves", "Shared"), { recursive: true });
+  await writeFile(sharedWorld, "shared-world");
+
+  const isolated = await service.setIsolation(item.id, true);
+  expect(isolated.gameDir).toBe(join(root, "versions", item.versionId));
+  expect(isolated.gameDirMode).toBe("isolated");
+  expect(await readFile(sharedWorld, "utf8")).toBe("shared-world");
+
+  const shared = await service.setIsolation(item.id, false);
+  expect(shared.gameDir).toBe(root);
+  expect(shared.gameDirMode).toBe("shared");
+  expect(await readFile(sharedWorld, "utf8")).toBe("shared-world");
+});
+
 it("removes the loader label when metadata becomes vanilla", async () => {
   const root = await fixture();
   const file = join(root, "versions", "base", "base.json");
@@ -121,6 +140,22 @@ it("removes the loader label when metadata becomes vanilla", async () => {
   metadata.libraries = [];
   await writeFile(file, JSON.stringify(metadata));
   expect((await service.importDirectory(root))[0].loader).toBeUndefined();
+});
+it("returns a modded instance to its installed vanilla profile without deleting loader files", async () => {
+  const root = await fixture();
+  const childDir = join(root, "versions", "fabric-child");
+  await mkdir(childDir);
+  const moddedFile = join(childDir, "fabric-child.json");
+  await writeFile(moddedFile, JSON.stringify({ id: "fabric-child", inheritsFrom: "base", mainClass: "net.minecraft.Main", libraries: [{ name: "net.fabricmc:fabric-loader:0.16.0" }] }));
+  const service = new InstanceService();
+  const items = await service.importDirectory(root);
+  const item = items.find((entry) => entry.versionId === "fabric-child")!;
+  expect(item.loader?.kind).toBe("fabric");
+
+  const vanilla = await service.useVanilla(item.id);
+  expect(vanilla.versionId).toBe("base");
+  expect(vanilla.loader).toBeUndefined();
+  expect(JSON.parse(await readFile(moddedFile, "utf8")).libraries).toEqual([{ name: "net.fabricmc:fabric-loader:0.16.0" }]);
 });
 it("shares one initial registry load across concurrent imports", async () => {
   const first = await fixture(),

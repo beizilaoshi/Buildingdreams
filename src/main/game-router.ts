@@ -1,4 +1,5 @@
 import { validateLaunchSettings } from "../shared/launch-settings";
+import { validateExternalAuthPolicy } from '../shared/external-auth';
 import { validateMetadata } from "../shared/instance-metadata";
 import { InstanceMaintenance } from './services/instance-maintenance';
 import { InstanceRepair } from './services/instance-repair';
@@ -17,6 +18,7 @@ import type { LoaderKind } from "../shared/types";
 import { dirname, join } from "node:path";
 import { TaskService } from "./services/tasks";
 import { NetworkService } from "./services/network";
+import { configureResumeStore } from "./services/resume-store";
 import {
   InstallService,
   instanceName,
@@ -51,7 +53,9 @@ export function registerGameCommands(
     throw new Error("账号服务尚未连接");
   },
   defaults?: () => Promise<Settings>,
+  resumeStorePath = join(dirname(file), "download-resume-v1.json"),
 ) {
+  configureResumeStore(resumeStorePath);
   const tasks = new TaskService(), network = new NetworkService();
   const inspector = new JavaService();
   const managed = new JavaRuntimeService(join(dirname(file),"java"),network,path=>inspector.inspect(path));
@@ -80,9 +84,11 @@ export function registerGameCommands(
       async () => (await defaults?.())?.launch ?? {},
       tasks,
       network,
+      async () => (await defaults?.())?.memoryMb ?? 4096,
     );
   instances.busy = id => launch.isBusy(id);
   const maintenance = new InstanceMaintenance(instances,tasks);
+  router.register('instances.authentication',value=>{const d=fields(value,['id','authentication']);return {id:text(d.id),authentication:validateExternalAuthPolicy(d.authentication)};},d=>instances.setAuthentication(d.id,d.authentication));
   const repair = new InstanceRepair(instances,tasks,network);
   router.register('instances.metadata',value=>{const d=fields(value,['id','metadata']);return {id:text(d.id),metadata:validateMetadata(d.metadata)};},d=>instances.metadata(d.id,d.metadata));
   router.register('instances.mergeFavorites',value=>{if(!Array.isArray(value)||value.length>10000)throw Error('无效收藏列表');return value.map(text);},ids=>instances.mergeFavorites(ids));
@@ -183,7 +189,9 @@ export function registerGameCommands(
     },
     async (data) => loaders.install(data.instanceId, data.kind, data.version),
   );
+    router.register("instances.useVanilla", text, (id) => instances.useVanilla(id));
   router.register("instances.list", noPayload, () => instances.list());
+  router.register('instances.isolation',value=>{const d=fields(value,['id','isolated']);if(typeof d.isolated!=='boolean')throw Error('无效版本隔离设置');return {id:text(d.id),isolated:d.isolated};},d=>instances.setIsolation(d.id,d.isolated));
   router.register("instances.import", text, (path) =>
     instances.importDirectory(path),
   );
@@ -198,7 +206,7 @@ export function registerGameCommands(
   router.register(
     "instances.patch",
     (value) => {
-      const data = fields(value, ["id", "memoryMb", "javaArgs", "javaPath"]);
+      const data = fields(value, ["id", "memoryMb", "javaArgs", "javaPath", "javaMinMajor", "javaMaxMajor", "javaMode"]);
       const id = text(data.id);
       if (
         !Number.isInteger(data.memoryMb) ||
@@ -214,17 +222,26 @@ export function registerGameCommands(
         )
       )
         throw new Error("无效 Java 参数");
+      for (const key of ["javaMinMajor", "javaMaxMajor"] as const)
+        if (data[key] !== undefined && (!Number.isInteger(data[key]) || Number(data[key]) < 1 || Number(data[key]) > 99))
+          throw new Error("无效 Java 主版本范围");
+      if (data.javaMinMajor !== undefined && data.javaMaxMajor !== undefined && Number(data.javaMinMajor) > Number(data.javaMaxMajor))
+        throw new Error("Java 最低版本不能高于最高版本");
+      if (data.javaMode !== undefined && !["auto", "instance"].includes(String(data.javaMode))) throw new Error("无效 Java 选择模式");
       return {
         id,
         memoryMb: data.memoryMb as number,
         javaArgs: data.javaArgs as string[],
         javaPath: data.javaPath === undefined ? undefined : data.javaPath === "" ? "" : text(data.javaPath),
+        javaMinMajor: data.javaMinMajor as number | undefined,
+        javaMaxMajor: data.javaMaxMajor as number | undefined,
+        javaMode: data.javaMode as "auto" | "instance" | undefined,
       };
     },
     ({ id, ...patch }) =>
       instances.patch(
         id,
-        patch as Pick<Instance, "memoryMb" | "javaArgs" | "javaPath">,
+        patch as Pick<Instance, "memoryMb" | "javaArgs" | "javaPath" | "javaMinMajor" | "javaMaxMajor" | "javaMode">,
       ),
   );
   const javaContext = (value: unknown): JavaContext => {
@@ -247,7 +264,7 @@ export function registerGameCommands(
     if ("family" in context) return {input:{minecraft:"手动下载运行环境",metadataMajor:context.family,exactMajor:context.family},options:{...options,manualPath:undefined,autoDownload:true}};
     if ("instanceId" in context) {
       const item = await instances.get(context.instanceId), version = await instances.resolve(item.id);
-      return {input:{minecraft:version.minecraftVersion,metadataMajor:version.javaVersion?.majorVersion,loader:item.loader,optifine:version.libraries.some(l=>/optifine/i.test(l.name)),liteLoader:version.libraries.some(l=>/liteloader/i.test(l.name))},options:{...options,memoryMb:item.memoryMb,manualPath:item.javaPath ?? options.manualPath,roots:[item.resourceDir,item.gameDir]}};
+      return {input:{minecraft:version.minecraftVersion,metadataMajor:version.javaVersion?.majorVersion,runtimeComponent:version.javaVersion?.component,customRange:item.javaMinMajor === undefined && item.javaMaxMajor === undefined ? undefined : {minMajor:item.javaMinMajor,maxMajor:item.javaMaxMajor},loader:item.loader,optifine:version.libraries.some(l=>/optifine/i.test(l.name)),liteLoader:version.libraries.some(l=>/liteloader/i.test(l.name))},options:{...options,memoryMb:item.memoryMb,manualPath:item.javaMode === "instance" ? undefined : item.javaPath ?? options.manualPath,roots:item.javaMode === "instance" ? [join(item.resourceDir,"versions",item.versionId)] : [item.resourceDir,item.gameDir],instanceOnly:item.javaMode === "instance"}};
     }
     // Renderer supplies only selected identities; official main-resolved metadata supplies requirements.
     const signal = AbortSignal.timeout(30000);
@@ -263,7 +280,7 @@ export function registerGameCommands(
     if (createHash("sha1").update(bytes).digest("hex") !== meta.sha1.toLowerCase()) throw new Error("版本元数据 SHA1 校验失败");
     const raw = JSON.parse(bytes.toString("utf8")); install.validateProfile(raw,context.minecraft);
     if (context.loader && !(await loaders.versions(context.loader.kind,context.minecraft)).some(v=>v.version === context.loader!.version)) throw new Error("加载器版本不支持此 Minecraft 版本");
-    return {input:{minecraft:context.minecraft,metadataMajor:raw.javaVersion?.majorVersion,loader:context.loader},options};
+    return {input:{minecraft:context.minecraft,metadataMajor:raw.javaVersion?.majorVersion,runtimeComponent:raw.javaVersion?.component,loader:context.loader},options};
   };
   router.register("java.plan",javaContext,async context=>{const {input,options}=await javaInput(context);return java.plan(input,options);});
   router.register("java.ensure",javaContext,async context=>{const {input,options}=await javaInput(context);return java.ensure(input,options);});

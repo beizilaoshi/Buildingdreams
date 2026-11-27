@@ -1,4 +1,5 @@
 export interface LaunchSettings {
+    memoryMode: 'fixed' | 'auto' | 'global';
     width: number;
     height: number;
     fullscreen: boolean;
@@ -12,18 +13,19 @@ export interface LaunchSettings {
     preCommand: string;
     preCommandWait: boolean;
     preCommandTimeout: number;
-    launcherAction: 'keep' | 'hide' | 'minimize';
+    launcherAction: 'keep' | 'hide' | 'minimize' | 'exitOnGameEnd';
     restoreLauncher: boolean;
     priority: 'normal' | 'belowNormal' | 'aboveNormal';
     gpu: 'system';
+    language: 'system' | 'zh_CN' | 'en_US' | 'zh_TW' | 'ja_JP' | 'ko_KR' | 'fr_FR' | 'de_DE' | 'es_ES' | 'pt_BR' | 'ru_RU';
 }
-export const DEFAULT_LAUNCH: Readonly<LaunchSettings> = Object.freeze({ width: 854, height: 480, fullscreen: false, serverHost: '', serverPort: 25565, gameArgs: [], gc: 'auto', windowTitle: '', versionInfo: '', preCommandEnabled: false, preCommand: '', preCommandWait: true, preCommandTimeout: 30, launcherAction: 'keep', restoreLauncher: true, priority: 'normal', gpu: 'system' });
-const enums: Record<string, readonly string[]> = { gc: ['auto', 'g1', 'zgc'], launcherAction: ['keep', 'hide', 'minimize'], priority: ['normal', 'belowNormal', 'aboveNormal'], gpu: ['system'] };
+export const DEFAULT_LAUNCH: Readonly<LaunchSettings> = Object.freeze({ memoryMode: 'fixed', width: 854, height: 480, fullscreen: false, serverHost: '', serverPort: 25565, gameArgs: [], gc: 'auto', windowTitle: '', versionInfo: '', preCommandEnabled: false, preCommand: '', preCommandWait: true, preCommandTimeout: 30, launcherAction: 'keep', restoreLauncher: true, priority: 'normal', gpu: 'system', language: 'system' });
+const enums: Record<string, readonly string[]> = { memoryMode: ['fixed', 'auto', 'global'], gc: ['auto', 'g1', 'zgc'], launcherAction: ['keep', 'hide', 'minimize', 'exitOnGameEnd'], priority: ['normal', 'belowNormal', 'aboveNormal'], gpu: ['system'], language: ['system','zh_CN','en_US','zh_TW','ja_JP','ko_KR','fr_FR','de_DE','es_ES','pt_BR','ru_RU'] };
 const ranges: Record<string, number[]> = { width: [320, 16384], height: [240, 16384], serverPort: [1, 65535], preCommandTimeout: [1, 300] };
 export function validateGameArguments(value: unknown): string[] {
     if (!Array.isArray(value) || value.length > 128 || value.some(v => typeof v !== 'string' || v.length > 4096 || /[\0\r\n]/.test(v)))
         throw Error('无效游戏参数（每行一个参数）');
-    if (value.some(v => /^--?(?:accessToken|username|uuid|userType|userProperties|profileProperties|clientId|xuid|gameDir|assetsDir|assetIndex|version|versionType|width|height|fullscreen|server|port|quickPlay\w*)(?:=|$)/i.test(v)))
+    if (value.some(v => /^--?(?:accessToken|username|uuid|userType|userProperties|profileProperties|clientId|xuid|gameDir|assetsDir|assetIndex|version|versionType|width|height|fullscreen|server|port|lang|quickPlay\w*)(?:=|$)/i.test(v)))
         throw Error('游戏参数不能覆盖账号、路径或托管启动选项');
     return [...value];
 }

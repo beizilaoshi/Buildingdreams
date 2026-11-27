@@ -22,6 +22,7 @@ import type { TaskService } from "./services/tasks";
 import type { NetworkService } from "./services/network";
 import { ContentInstallService } from "./services/content-install";
 import { ContentSaveService } from "./services/content-save";
+import { CurseForgeFingerprintIdentifier } from "./services/mod-identification";
 function text(v: unknown): string {
   if (typeof v !== "string" || !v.trim() || v.length > 4096 || v.includes("\0"))
     throw new Error("无效字符串");
@@ -37,7 +38,7 @@ function fields(v: unknown, keys: string[]): Record<string, unknown> {
     throw new Error("无效参数字段");
   return v as Record<string, unknown>;
 }
-function filter(v: unknown): ContentFilter {
+function filter(v: unknown, search = false): ContentFilter {
   const d = fields(v, [
     "provider",
     "projectType",
@@ -49,7 +50,7 @@ function filter(v: unknown): ContentFilter {
   ]);
   const result: ContentFilter = {};
   if (d.provider !== undefined) {
-    if (!["modrinth", "curseforge"].includes(String(d.provider)))
+    if (!(search ? ["all", "modrinth", "curseforge"] : ["modrinth", "curseforge"]).includes(String(d.provider)))
       throw new Error("无效内容来源");
     result.provider = d.provider as ContentFilter["provider"];
   }
@@ -114,6 +115,8 @@ export function registerModCommands(
       services.tasks,
       services.network,
       modrinth,
+      undefined,
+      new CurseForgeFingerprintIdentifier(curseforge),
     );
   router.register("content.providerStatus", noPayload, () => vault.status());
   router.register(
@@ -283,7 +286,7 @@ export function registerModCommands(
           typeof d.query === "string" && d.query.length === 0
             ? ""
             : text(d.query),
-        filter: filter(d.filter),
+        filter: filter(d.filter, true),
       };
     },
     (d) => modrinth.search(d.query, d.filter),
@@ -306,6 +309,11 @@ export function registerModCommands(
       async (d) => mods.install(d.instanceId, d.versionId),
     );
   router.register("mods.checkUpdatesDetailed", text, id => mods.checkUpdatesDetailed(id));
+  router.register('mods.identify',v=>{
+    const d=fields(v,['id','items']);
+    validateBatch('enable',d.items as ModBatchItem[]);
+    return {id:text(d.id),items:d.items as ModBatchItem[]};
+  },d=>mods.identify(d.id,d.items));
   router.register("mods.batchResult", text, async id => mods.batchResult(id));
   router.register("mods.importMany", v => {
     const d = fields(v,["instanceId","selectionId"]);

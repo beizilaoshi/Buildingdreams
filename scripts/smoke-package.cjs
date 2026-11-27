@@ -5,6 +5,24 @@ const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const { requirePredicates, expectedArtifacts, ownedEndpoint } = require('./package-smoke-guards.cjs');
 const assert = require('node:assert/strict');
+async function applicationWindow(app) {
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    const page = app.windows().find(candidate => candidate.url().startsWith('file:'));
+    if (page) return page;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('Timed out waiting for the launcher window after the logo splash');
+}
+async function applicationPage(context) {
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    const page = context.pages().find(candidate => candidate.url().startsWith('file:'));
+    if (page) return page;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('Timed out waiting for the portable launcher window after the logo splash');
+}
 (async () => {
   const evidence = resolve('validation/package');
   await mkdir(evidence, { recursive: true });
@@ -14,7 +32,7 @@ const assert = require('node:assert/strict');
   const executablePath = resolve('release/win-unpacked/筑梦启动器.exe');
   const app = await electron.launch({ executablePath, env: { ...process.env, ZHUMENG_DATA_DIR: data } });
   try {
-    const page = await app.firstWindow();
+    const page = await applicationWindow(app);
     await page.waitForSelector('.home-intro');
     await page.keyboard.press('Escape');
     const crypto = await app.evaluate(({ safeStorage }) => {
@@ -48,7 +66,7 @@ const assert = require('node:assert/strict');
   // Restart the shipped executable to verify persisted DPAPI identity under the same Windows user.
   const restart = await electron.launch({ executablePath, args: ['--disable-gpu'], env: { ...process.env, ZHUMENG_DATA_DIR: data } });
   try {
-    const p = await restart.firstWindow(); await p.waitForSelector('.home-intro');
+    const p = await applicationWindow(restart); await p.waitForSelector('.home-intro');
     const accounts = await p.evaluate(() => window.launcher.invoke('accounts.list', undefined));
     assert(accounts.some(a => a.name === 'PackageTest'));
     await p.screenshot({ path: join(evidence, 'home-gpu-disabled.png') });
@@ -67,7 +85,7 @@ const assert = require('node:assert/strict');
   try {
     const ownership = await ownedEndpoint({ child, data: portableData, nonce });
     browser = await chromium.connectOverCDP(ownership.endpoint);
-    const page = browser.contexts()[0].pages()[0];
+    const page = await applicationPage(browser.contexts()[0]);
     await page.waitForSelector('.home-intro');
     await page.keyboard.press('Escape');
     const predicates = requirePredicates({ actualRendererLoaded: await page.locator('.home-intro').isVisible(), bridgeAvailable: await page.evaluate(() => typeof window.launcher?.invoke === 'function'), nodeIsolated: await page.evaluate(() => typeof require === 'undefined' && typeof process === 'undefined') });

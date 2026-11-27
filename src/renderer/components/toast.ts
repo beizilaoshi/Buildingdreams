@@ -9,7 +9,17 @@ export function noticeContents(item: Notice, history = false) {
   const icon = text("span", icons[item.kind], "feedback-severity"); icon.setAttribute("aria-hidden", "true");
   const copy = text("div", "", "notice-copy"); copy.append(text("strong", item.title), text("p", item.message));
   if (history) { const time = text("time", new Date(item.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })); time.setAttribute("datetime", new Date(item.at).toISOString()); copy.append(time); }
+  else if(item.kind==="error") { const action=text("button","查看排查建议","text-button") as HTMLButtonElement;action.type="button";action.onclick=()=>showFailureDetails(item);copy.append(action); }
   return [icon, copy];
+}
+function showFailureDetails(item:Notice){
+ const message=item.message;
+ const advice=/OutOfMemoryError|heap space|内存不足/i.test(message)?'检查已分配内存是否低于系统可用内存，关闭占用较高的软件后重试。':/UnsupportedClassVersion|Java|JVM|java\.exe/i.test(message)?'确认 Java 版本符合当前 Minecraft 与加载器要求；优先使用实例的自动 Java 配置。':/ECONN|timeout|network|网络|DNS|连接/i.test(message)?'检查网络连接和 DNS；资源下载失败时可在设置中切换下载源后重试。':/EACCES|EPERM|Permission denied|拒绝访问/i.test(message)?'检查目标文件夹权限和剩余空间，并确认文件没有被游戏或安全软件占用。':/mod|模组|Mixin|Loader/i.test(message)?'核对模组、Minecraft 与加载器版本；排查最近新增或更新的模组。':'打开任务面板查看失败步骤；确认网络、磁盘空间和目标目录可用后重试。若是游戏启动问题，可到游戏库打开“崩溃诊断”分析日志。';
+ const modal=document.createElement('dialog');modal.className='glass dialog';modal.setAttribute('aria-label','错误排查建议');
+ const header=document.createElement('div');header.className='row between';header.append(text('h2','错误排查建议'));const close=document.createElement('button');close.type='button';close.className='quiet';close.textContent='关闭';close.onclick=()=>modal.close();header.append(close);
+ const body=document.createElement('div');body.className='stack';body.append(text('p',item.title),text('p',message,'error'),text('h3','建议'),text('p',advice,'muted'));
+ const help=document.createElement('button');help.type='button';help.className='quiet';help.textContent='打开帮助与支持';help.onclick=()=>{modal.close();window.dispatchEvent(new CustomEvent('navigate',{detail:'about'}));};body.append(help);
+ modal.append(header,body);document.body.append(modal);modal.addEventListener('close',()=>modal.remove(),{once:true});modal.showModal();
 }
 export function installToasts() {
   const host = document.querySelector<HTMLElement>("#toasts")!;

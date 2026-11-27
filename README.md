@@ -4,11 +4,11 @@
   <p>在月湖与星光之间，开启你的 Minecraft 世界。</p>
   <p>日式绘本风景 · 液态玻璃界面 · 独立游戏实例</p>
   <p>
-    <img alt="版本" src="https://img.shields.io/badge/version-0.0.1--preview.1-929aff" />
+    <img alt="版本" src="https://img.shields.io/badge/version-0.0.1--preview.2-929aff" />
     <img alt="平台" src="https://img.shields.io/badge/platform-Windows_x64-78b9db" />
     <img alt="状态" src="https://img.shields.io/badge/status-预览版-d6a8d8" />
   </p>
-  <p><a href="https://github.com/beizilaoshi/Buildingdreams/releases/tag/v0.0.1-preview.1">下载预览版</a> · <a href="https://github.com/beizilaoshi/Buildingdreams/issues">反馈问题</a> · <a href="docs/releases/0.0.1-preview.1.md">更新说明</a></p>
+  <p><a href="https://github.com/beizilaoshi/Buildingdreams/releases/tag/v0.0.1-preview.2">下载第二个预览版</a> · <a href="https://github.com/beizilaoshi/Buildingdreams/issues">反馈问题</a> · <a href="docs/releases/0.0.1-preview.2.md">更新说明</a></p>
 </div>
 
 ![筑梦启动器月湖首页](docs/images/home-preview.jpg)
@@ -19,9 +19,9 @@
 
 | 发行文件 | 适合场景 |
 | --- | --- |
-| [免安装版 · portable.exe](https://github.com/beizilaoshi/Buildingdreams/releases/download/v0.0.1-preview.1/Buildingdreams-0.0.1-preview.1-x64-portable.exe) | 下载后直接运行 |
-| [安装版 · nsis.exe](https://github.com/beizilaoshi/Buildingdreams/releases/download/v0.0.1-preview.1/Buildingdreams-0.0.1-preview.1-x64-nsis.exe) | 按向导安装，可选择目录 |
-| [SHA256SUMS](https://github.com/beizilaoshi/Buildingdreams/releases/download/v0.0.1-preview.1/SHA256SUMS) | 校验下载文件 |
+| [免安装版 · portable.exe](https://github.com/beizilaoshi/Buildingdreams/releases/download/v0.0.1-preview.2/Buildingdreams-0.0.1-preview.2-x64-portable.exe) | 下载后直接运行 |
+| [安装版 · nsis.exe](https://github.com/beizilaoshi/Buildingdreams/releases/download/v0.0.1-preview.2/Buildingdreams-0.0.1-preview.2-x64-nsis.exe) | 按向导安装，可选择目录 |
+| [SHA256SUMS](https://github.com/beizilaoshi/Buildingdreams/releases/download/v0.0.1-preview.2/SHA256SUMS) | 校验下载文件 |
 
 需要 Windows x64。本版尚未代码签名，Windows 可能提示未知发布者。免安装版默认仍将用户数据保存在 Windows 应用数据目录；它不代表数据随 EXE 移动。需要隔离数据时，可设置 `ZHUMENG_DATA_DIR`。
 
@@ -51,6 +51,10 @@
 | 版本更新 | 启动时检查与手动检查 GitHub Releases，支持预览 / 稳定通道；由用户明确选择下载 |
 
 更新检查不会自动替换或执行程序。Java 自动下载当前面向 Windows x64；部分历史 Java 版本需手动提供。安装包不附带 Minecraft、Java 或 Mod。
+
+### 游戏实例与维护
+
+每个游戏实例可单独管理设置、Mod、存档备份、截图和资源文件；禁用 Mod 会改用 `.zhumeng` 后缀保留文件，重新启用时恢复原扩展名。实例维护工具也提供检查、修复与导出入口。安装向导、卸载流程和游戏内版本管理页采用筑梦启动器的统一配色与卡片布局。
 
 ### 微软登录与内容来源
 

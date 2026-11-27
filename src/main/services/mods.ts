@@ -1,4 +1,5 @@
 import { modMetadata } from "./mod-metadata";
+import { CurseForgeFingerprintIdentifier, HashModIdentifier, identificationScope, type ModIdentificationItem, type ModIdentificationResult, type ModIdentificationSourceStatus } from './mod-identification';
 import type { ModBatchAction, ModBatchItem, ModBatchResult, ModUpdateCheck } from "../../shared/content";
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -35,8 +36,10 @@ function fileKey(name: string): string {
   return name.toUpperCase();
 }
 function isDisabled(name: string): boolean {
-  return /\.disabled$/i.test(name);
+  return /\.(?:zhumeng|disabled|old)$/i.test(name);
 }
+function enabledName(name:string):string {return name.replace(/\.(?:zhumeng|disabled|old)$/i,'');}
+function toggleName(name:string, enabled:boolean):string {return enabled?enabledName(name):isDisabled(name)?name:name+'.zhumeng';}
 async function snapshot(dir: string): Promise<string> {
   let names: string[];
   try {
@@ -59,7 +62,7 @@ export function modFile(value: string): string {
   if (
     value !== basename(value) ||
     /[\\/:\x00-\x1f<>"|?*]/.test(value) ||
-    !/^.+\.jar(?:\.disabled)?$/i.test(value) ||
+    !/^.+\.jar(?:\.(?:zhumeng|disabled|old))?$/i.test(value) ||
     /[. ]$/.test(value) ||
     /^(con|prn|aux|nul|com[1-9]|lpt[1-9])\./i.test(value)
   )
@@ -73,6 +76,8 @@ export class ModService {
     private tasks: TaskService,
     private network: NetworkService,
     private modrinth: ContentSource,
+    private identifier?: HashModIdentifier,
+    private curseforgeIdentifier?: CurseForgeFingerprintIdentifier,
   ) {}
   private async locked<T>(id: string, job: () => Promise<T>): Promise<T> {
     const next = (this.locks.get(id) ?? Promise.resolve())
@@ -113,7 +118,7 @@ export class ModService {
     }
     const result: LocalMod[] = [];
     for (const fileName of files.filter((f) =>
-      /\.jar(?:\.disabled)?$/i.test(f),
+      /\.jar(?:\.(?:zhumeng|disabled|old))?$/i.test(f),
     )) {
       const file = await safeDestination(dir, modFile(fileName));
       if (!(await lstat(file)).isFile()) throw new Error("Mod 不是普通文件");
@@ -374,7 +379,7 @@ export class ModService {
             ([, s]) => s.projectId === version.project_id,
           );
           const disabled = owned.some(([n]) => isDisabled(n));
-          let destination = name + (disabled ? ".disabled" : "");
+          let destination = name + (disabled ? (owned.find(([n]) => isDisabled(n))![0].match(/\.(?:zhumeng|disabled|old)$/i)![0]) : "");
           for (const [old, source] of owned) {
             const bytes = await readFile(await safeDestination(dir, old));
             if (createHash("sha1").update(bytes).digest("hex") !== source.sha1)
@@ -382,6 +387,7 @@ export class ModService {
           }
           const names = await readdir(dir);
           const alias = names.find((n) => fileKey(n) === fileKey(destination));
+          if(names.some(n=>fileKey(enabledName(n))===fileKey(name) && !owned.some(([old])=>fileKey(old)===fileKey(n)))) throw new Error(`文件名冲突: ${destination}`);
           if (alias && !owned.some(([n]) => fileKey(n) === fileKey(alias)))
             throw new Error(`文件名冲突: ${destination}`);
           // Retain the physical filename spelling for a same-project case-only update.
@@ -426,11 +432,11 @@ export class ModService {
     if (typeof enabled !== "boolean") throw new Error("无效启用状态");
     return this.locked(id, () =>
       this.transaction(id, async (dir, sources) => {
-        const next =
-          fileName.replace(/\.disabled$/i, "") + (enabled ? "" : ".disabled");
+        const next = toggleName(fileName,enabled);
         const source = await safeDestination(dir, fileName);
         await lstat(source);
         if (next === fileName) return;
+        if((await readdir(dir)).some(n=>n!==fileName && fileKey(enabledName(n))===fileKey(enabledName(next)))) throw new Error('目标 Mod 已存在');
         try {
           await lstat(join(dir, next));
           throw new Error("目标 Mod 已存在");
@@ -462,7 +468,7 @@ export class ModService {
       this.transaction(id, async (dir) => {
         if (
           (await readdir(dir)).some(
-            (existing) => fileKey(existing.replace(/\.disabled$/i, "")) === fileKey(name),
+            (existing) => fileKey(existing.replace(/\.(?:zhumeng|disabled|old)$/i, "")) === fileKey(name),
           )
         )
           throw new Error("Mod 已存在");
@@ -494,9 +500,9 @@ export class ModService {
             if (action === "remove") {
               await rm(path); delete sources[item.fileName]; return;
             }
-            const next = item.fileName.replace(/\.disabled$/i, "") + (action === "disable" ? ".disabled" : "");
+            const next = toggleName(item.fileName,action==='enable');
             if (next === item.fileName) return;
-            if ((await readdir(dir)).some(n => fileKey(n) === fileKey(next))) throw new Error("目标 Mod 已存在");
+            if ((await readdir(dir)).some(n => n!==item.fileName && fileKey(enabledName(n)) === fileKey(enabledName(next)))) throw new Error("目标 Mod 已存在");
             await rename(path, join(dir, next));
             if (sources[item.fileName]) {sources[next] = sources[item.fileName]; delete sources[item.fileName];}
           }, context?.signal);
@@ -552,6 +558,77 @@ export class ModService {
   }
   async checkUpdates(id: string): Promise<ModUpdate[]> {
     return (await this.checkUpdatesDetailed(id)).updates;
+  }
+  async identify(id:string, items:ModIdentificationItem[], signal?:AbortSignal):Promise<{scope:string;results:ModIdentificationResult[]}> {
+    validateBatch('enable', items);
+    const reviewed=items.map(item=>({...item}));
+    const results:ModIdentificationResult[]=[];
+    for(const item of reviewed) {
+      if(signal?.aborted) {results.push({fileName:item.fileName,status:'cancelled',error:'已取消'});continue;}
+      try {
+        const result=await this.locked(id,async ():Promise<ModIdentificationResult>=>{
+          const current=(await this.listUnlocked(id)).find(mod=>mod.fileName===item.fileName);
+          if(!current || current.sha1!==item.sha1.toLowerCase()) throw new Error('Mod 已发生变化，请刷新后重新选择');
+          if(current.projectId) return {fileName:item.fileName,status:'trusted',projectId:current.projectId,versionId:current.versionId};
+          const identifier=this.identifier??=new HashModIdentifier(this.network.restricted(['api.modrinth.com']));
+          let version:ContentVersion|null=null;
+          let modrinthStatus:ModIdentificationSourceStatus='unmatched';
+          let curseforgeStatus:ModIdentificationSourceStatus='skipped';
+          const errors:string[]=[];
+          try {
+            version=await identifier.lookup(current.sha1,signal);
+            modrinthStatus=version?'identified':'unmatched';
+          } catch(error) {
+            signal?.throwIfAborted();
+            modrinthStatus='failed';
+            errors.push(`Modrinth：${error instanceof Error?error.message:'查询失败'}`);
+          }
+          // Query CurseForge only after the exact SHA-1 lookup misses. The user-facing
+          // confirmation explains this scope; only the normalized integer fingerprint
+          // and one user-owned API key header reach CurseForge.
+          if(!version) {
+            if(!this.curseforgeIdentifier) {
+              curseforgeStatus='unavailable';
+              errors.push('CurseForge 指纹识别未初始化');
+            } else {
+              try {
+                if(!await this.curseforgeIdentifier.configured()) {
+                  curseforgeStatus='unavailable';
+                  errors.push('CurseForge 未配置用户 API Key');
+                } else {
+                  const path=await safeDestination(await this.directory(id),item.fileName), info=await lstat(path);
+                  if(!info.isFile()) throw new Error('Mod 不是普通文件');
+                  version=await this.curseforgeIdentifier.lookup(path,info.size,current.sha1,signal);
+                  curseforgeStatus=version?'identified':'unmatched';
+                }
+              } catch(error) {
+                signal?.throwIfAborted();
+                curseforgeStatus='failed';
+                errors.push(`CurseForge：${error instanceof Error?error.message:'指纹查询失败'}`);
+              }
+            }
+          }
+          if(!version) {
+            const failed=modrinthStatus==='failed'||curseforgeStatus==='failed';
+            return {fileName:item.fileName,status:failed?'failed':'unmatched',sources:{modrinth:modrinthStatus,curseforge:curseforgeStatus},...(errors.length?{error:errors.join('；')}:{})};
+          }
+          const matchedVersion=version;
+          await this.transaction(id,async(dir,sources)=>{
+            const path=await safeDestination(dir,item.fileName);
+            const bytes=await readFile(path);
+            if(createHash('sha1').update(bytes).digest('hex')!==current.sha1) throw new Error('Mod 已发生变化，请刷新后重新选择');
+            const file=matchedVersion.files.find(file=>file.hashes.sha1===current.sha1);
+            if(!file || file.size!==bytes.length) throw new Error('官方文件大小与本地不匹配');
+            // Never replace an association that became trusted while the request ran.
+            if(sources[item.fileName]?.sha1===current.sha1) throw new Error('来源记录已变化，请刷新后重试');
+            sources[item.fileName]={projectId:matchedVersion.project_id,versionId:matchedVersion.id,sha1:current.sha1,fileSize:file.size,...(file.url?{downloads:[file.url]}:{})};
+          },signal);
+          return {fileName:item.fileName,status:'identified',projectId:matchedVersion.project_id,versionId:matchedVersion.id,sources:{modrinth:modrinthStatus,curseforge:curseforgeStatus}};
+        });
+        results.push(result);
+      } catch(error) {results.push({fileName:item.fileName,status:signal?.aborted?'cancelled':'failed',error:error instanceof Error?error.message:String(error)});}
+    }
+    return {scope:identificationScope,results};
   }
   async checkUpdatesDetailed(id: string): Promise<ModUpdateCheck> {
     const instance = await this.instances.get(id);

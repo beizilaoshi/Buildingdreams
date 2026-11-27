@@ -19,7 +19,7 @@ export function packs() {
   );
   const local = panel(
     "本地整合包",
-    "支持 .mrpack 与 CurseForge ZIP；缺失文件可在安装前逐项补全。",
+    "支持 Modrinth、CurseForge、MultiMC / Prism、HMCL、MCBBS 整合包及标准 .minecraft ZIP；缺失文件可逐项补全。",
   );
   const preview = e("div");
   let selectionGeneration = 0;
@@ -58,16 +58,39 @@ export function packs() {
         const info = inspected;
         preview.replaceChildren(
           e("h3", "", info.name),
-          e(
-            "p",
-            "muted",
-            `${info.format} · Minecraft ${info.minecraft} · ${info.loader?.kind ?? "原版"} · ${info.files.length} 个文件`,
-          ),
+          e("p", "muted", info.format === "minecraft-zip"
+            ? `普通 Minecraft ZIP · 检测到 ${info.vanillaVersions?.length ?? 0} 个可安全重装的原版版本`
+            : `${info.format} · Minecraft ${info.minecraft} · ${info.loader?.kind ?? "原版"} · ${info.files.length} 个文件`),
         );
+        for (const warning of info.warnings ?? []) preview.append(e("p", "muted", warning));
         name.value = info.name;
+        let installButton: HTMLButtonElement;
+        let selectedVersionId = info.vanillaVersions?.length === 1 ? info.vanillaVersions[0].id : "";
+        let versionChoice: ReturnType<typeof choice> | undefined;
+        if (info.format === "minecraft-zip") {
+          const versions = info.vanillaVersions ?? [];
+          versionChoice = choice(
+            versions.map((version) => [version.id, `${version.id}${version.type ? ` · ${version.type}` : ""}`]),
+            selectedVersionId,
+            false,
+            true,
+          );
+          versionChoice.setAttribute("aria-label", "选择要导入的 Minecraft 版本");
+          preview.append(
+            e("h3", "", "选择要导入的版本"),
+            e("p", "muted", versions.length > 1
+              ? "ZIP 含多个版本，请明确选择一个。筑梦将从官方清单重新下载该版本；不会使用 ZIP 内的版本文件、库、存档或启动配置。"
+              : "已预选此版本。筑梦会从官方清单重新下载原版文件。"),
+            versionChoice,
+          );
+          versionChoice.addEventListener("change", () => {
+            selectedVersionId = versionChoice?.value ?? "";
+            installButton.disabled = !selectedVersionId;
+          });
+        }
         preview.append(
           field("安装后的游戏名称", name),
-          field("包含可选文件", optional),
+          ...(info.format === "minecraft-zip" ? [] : [field("包含可选文件", optional)]),
         );
         if (info.missingFiles.length) {
           preview.append(
@@ -137,18 +160,22 @@ export function packs() {
           preview.append(field("临时 CurseForge API Key（不保存）", key));
         }
         let installing = false;
-        const installButton = button(
+        installButton = button(
           "安装整合包",
           async () => {
             if (!current() || installing) return;
+            if (info.format === "minecraft-zip" && !selectedVersionId)
+              throw new Error("请先选择要导入的版本");
             const payload = {
               file,
               name: name.value,
-              options: {
-                includeOptional: optional.checked,
-                suppliedFiles: mappings.map((entry) => ({ ...entry })),
-                ...(key.value ? { curseForgeKey: key.value } : {}),
-              },
+              options: info.format === "minecraft-zip"
+                ? { selectedVersionId }
+                : {
+                    includeOptional: optional.checked,
+                    suppliedFiles: mappings.map((entry) => ({ ...entry })),
+                    ...(key.value ? { curseForgeKey: key.value } : {}),
+                  },
             };
             installing = true;
             installButton.disabled = true;
@@ -166,6 +193,7 @@ export function packs() {
           },
           "primary",
         );
+        installButton.disabled = info.format === "minecraft-zip" && !selectedVersionId;
         preview.append(installButton);
       },
       "primary",

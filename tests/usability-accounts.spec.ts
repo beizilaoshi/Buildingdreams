@@ -421,10 +421,11 @@ test('inline client configuration synchronizes advanced save without losing dire
   await app.evaluate(() => ((globalThis as any).accountsFixture.missingClient = true));
   const clientId = '12345678-1234-1234-1234-123456789abc';
   await page.getByRole('button', { name: '登录 / 添加账号 →', exact: true }).click();
-  const advanced = page.locator('section').filter({ has: page.getByRole('heading', { name: '高级配置', exact: true }) });
+  const advanced = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Microsoft 登录配置', exact: true }) });
+  const installation = page.locator('section').filter({ has: page.getByRole('heading', { name: '游戏安装目录', exact: true }) });
   await expect(advanced.getByLabel('Microsoft 客户端 ID', { exact: true })).toHaveValue('');
   const directoryDraft = 'E:\\UnsavedAccountRegressionDraft';
-  await advanced.getByLabel('新游戏安装目录（留空使用应用数据目录）').fill(directoryDraft);
+  await installation.getByLabel('新游戏安装目录（留空使用应用数据目录）').fill(directoryDraft);
   await page.getByRole('button', { name: '登录 Microsoft', exact: true }).click();
   const modal = page.getByRole('dialog', { name: '登录 Microsoft', exact: true });
   await expect(modal.getByLabel('Microsoft 客户端 ID', { exact: true })).toBeVisible();
@@ -435,9 +436,20 @@ test('inline client configuration synchronizes advanced save without losing dire
   await modal.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(modal).toHaveCount(0);
   await expect(advanced.getByLabel('Microsoft 客户端 ID', { exact: true })).toHaveValue(clientId);
-  await expect(advanced.getByLabel('新游戏安装目录（留空使用应用数据目录）')).toHaveValue(directoryDraft);
+  await expect(installation.getByLabel('新游戏安装目录（留空使用应用数据目录）')).toHaveValue(directoryDraft);
   await advanced.getByRole('button', { name: '保存客户端 ID', exact: true }).click();
   const saved = await page.evaluate(() => window.launcher.invoke('settings.read', undefined));
   expect(saved.microsoftClientId).toBe(clientId);
   expect(saved.gameDirectory).toBe('');
+});
+test('skin workbench labels local customization honestly and offers model selection',async()=>{
+ await page.getByRole('button',{name:'登录 / 添加账号 →',exact:true}).click();
+ await page.getByRole('button',{name:'添加本地账号',exact:true}).click();
+ await page.getByLabel('本地玩家名').fill('Alex');await page.getByLabel('本地玩家名').press('Enter');
+ await page.getByRole('button',{name:'皮肤管理',exact:true}).click();
+ const modal=page.getByRole('dialog',{name:'皮肤管理 · Alex'});
+ await expect(modal).toContainText('不会改变游戏内皮肤');
+ await expect(modal.getByLabel('角色模型')).toHaveValue('classic');
+ await modal.getByLabel('角色模型').selectOption('slim');
+ await expect(modal.getByRole('button',{name:'应用启动器头像'})).toBeDisabled();
 });

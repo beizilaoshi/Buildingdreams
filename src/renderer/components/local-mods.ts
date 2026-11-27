@@ -2,6 +2,7 @@ import type {LocalMod,ModUpdate,ModBatchAction,ModBatchItem,ModBatchResult} from
 import {api,selected,e,button,input,field,notify} from "../ui";
 import {choice} from "./choice";
 import {dialog} from "./dialog";
+import {identificationScope} from '../../shared/mod-identification';
 export function localMods() {
  const node=e("div","local-mods"),instance=selected();
  if(!instance){node.append(e("p","muted","请先在游戏库中选择实例。"));return node;}
@@ -70,7 +71,27 @@ export function localMods() {
   const modal=dialog(`批量${verb} Mod`,body);
   body.append(button(`确认${verb}`,async()=>{modal.close();await run(action,items);},action==="remove"?"danger":"primary"));
  };
- tools.append(button("导入本地 Mod",async()=>{
+ tools.append(button('识别本地 Mod',()=>{
+  if(!current()||busy)return;
+  const chosen=[...selection.values()].filter(item=>mods.some(m=>m.fileName===item.fileName&&!m.projectId));
+  if(!chosen.length)throw new Error('请先勾选尚未识别来源的本地 Mod');
+  if(chosen.length>200)throw new Error('最多识别 200 个 Mod');
+  const items=chosen.map(item=>({...item}));
+  const body=e('div');body.append(e('p','',identificationScope),e('p','',`识别所选的 ${items.length} 个未知文件，已有可信来源的选择将跳过：`));
+  const names=e('ul','local-confirm-files');for(const item of items)names.append(e('li','',item.fileName));body.append(names);
+  const modal=dialog('识别本地 Mod',body);
+  body.append(button('确认识别',async()=>{
+   modal.close();if(!current()||busy)return;busy=true;render();
+   try{
+    const result=await api('mods.identify',{id,items});if(!current())return;
+    const labels={identified:'已识别',trusted:'已有可信来源',unmatched:'未匹配',failed:'失败',cancelled:'已取消'};
+    const sourceLabels={identified:'已匹配',unmatched:'未匹配',failed:'查询失败',unavailable:'未配置密钥',skipped:'未查询'};
+    report.replaceChildren(e('h3','','逐项识别结果'),e('p','muted',result.scope));
+    for(const r of result.results)report.append(e('p','',`${r.fileName}：${labels[r.status]}${r.projectId?` · ${r.projectId}`:''}${r.sources?` · Modrinth ${sourceLabels[r.sources.modrinth]} · CurseForge ${sourceLabels[r.sources.curseforge]}`:''}${r.error?` · ${r.error}`:''}`));
+    await load();
+   }finally{busy=false;if(current())render();}
+  },'primary'));
+ },'quiet'),button("导入本地 Mod",async()=>{
   const picked=await api("dialog.chooseMods",undefined);if(!picked||!current())return;
   const body=e("div");body.append(e("p","",`导入到 ${instance.name}：`));for(const name of picked.names)body.append(e("p","",name));
   const modal=dialog("导入本地 Mod",body);
@@ -85,7 +106,7 @@ export function localMods() {
  },"quiet"),button("刷新列表",load,"quiet"),button("选择可见项",()=>{for(const m of visible())if(!selection.has(m.fileName))selection.set(m.fileName,{fileName:m.fileName,sha1:m.sha1});render();},"quiet"),button("清除选择",()=>{selection.clear();render();},"quiet"));
  for(const [action,title] of [["enable","批量启用"],["disable","批量禁用"],["remove","批量移除"],["update","批量更新"]] as const)tools.append(button(title,()=>confirm(action),action==="remove"?"danger":"quiet"));
  search.oninput=render;status.onchange=render;
- node.append(field("搜索本地 Mod",search),status,tools,summary,checks,report,rows);
+ node.append(field("搜索本地 Mod",search),status,tools,e('p','muted','勾选未知来源文件后可手动识别，识别成功后再检查更新。'),summary,checks,report,rows);
  node.addEventListener("mods-refresh",()=>{void load().catch(notify);});
  void load().catch(notify);return node;
 }

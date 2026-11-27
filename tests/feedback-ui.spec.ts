@@ -98,6 +98,9 @@ test("task actions disable while IPC is pending, report honest errors, and clear
     await row.getByRole("button", { name: "取消任务", exact: true }).click(); await expect(row.getByRole("button", { name: "处理中…" })).toBeDisabled();
     await app.evaluate(() => (globalThis as any).feedbackReject());
     await expect(page.locator(".notice-toast[data-kind=error]")).toContainText("Fixture cancel refused");
+    await page.locator(".notice-toast[data-kind=error]").getByRole("button",{name:"查看排查建议",exact:true}).click();
+    const errorDialog=page.getByRole("dialog",{name:"错误排查建议"});await expect(errorDialog).toContainText("打开任务面板查看失败步骤");await errorDialog.getByRole("button",{name:"关闭",exact:true}).click();
+    if(await page.locator("#task-panel").isHidden())await page.locator("#task-toggle").click();
     await expect(row.getByRole("button", { name: "取消任务", exact: true })).toBeEnabled(); await expect(row).toContainText("运行中");
     await page.locator("#notice-toggle").click(); await page.getByRole("button", { name: "清除通知记录" }).click();
     expect(await page.evaluate(async () => (await window.launcher.invoke("tasks.list", undefined))[0].status)).toBe("running");

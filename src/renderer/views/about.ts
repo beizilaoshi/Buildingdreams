@@ -1,4 +1,6 @@
+import { showLink } from '../components/link-room';
 import { updateCard } from '../components/updates';
+import { showHelp } from '../components/help-center';
 import { api, e, button, heading, panel, notify } from "../ui";
 import { dialog } from "../components/dialog";
 const COMMUNITY_URL = "https://qm.qq.com/q/C28ONm8EQa";
@@ -43,6 +45,8 @@ export function about() {
     ),
   );
   node.append(
+    button('帮助与支持', showHelp, 'quiet'),
+    button('EasyTier 联机', showLink, 'quiet'),
     updateCard(),
     card,
     community,

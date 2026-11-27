@@ -31,11 +31,11 @@ it('owns one running child, stops it, ignores stale close, and permits restart',
             child.kill();
     }
 });
-it('cancels preparation before account retrieval and reports only safe failure', async () => {
+it('cancels preparation at the Java resolution barrier after identity validation', async () => {
     const { instances, item, java } = await setup();
     let release!: () => void;
     vi.spyOn(java, 'resolve').mockImplementation(async () => { await new Promise<void>(r => release = r); return { path: process.execPath, major: 17, version: '17', arch: 'amd64' }; });
-    const account = vi.fn(), runner = vi.fn();
+    const account = vi.fn(async () => ({name:'Name',uuid:'uuid-value',accessToken:'secret-value'})), runner = vi.fn();
     const service = new LaunchService(instances, java, account, runner);
     const pending = service.launch(item.id, 'a');
     const rejected = expect(pending).rejects.toThrow();
@@ -43,7 +43,7 @@ it('cancels preparation before account retrieval and reports only safe failure',
     await service.cancel(item.id);
     release();
     await rejected;
-    expect(account).not.toHaveBeenCalled();
+    expect(account).toHaveBeenCalledTimes(1);
     expect(runner).not.toHaveBeenCalled();
     expect(service.status(item.id).phase).toBe('cancelled');
 });
@@ -97,4 +97,41 @@ it('a failed kill error from a live child cannot release ownership or permit ano
  await service.launch(item.id,'a');const originalKill=child.kill.bind(child);vi.spyOn(child,'kill').mockImplementation(()=>{child.emit('error',Object.assign(new Error('kill EPERM'),{code:'EPERM'}));return false;});
  try{await service.stop(item.id);expect(service.isBusy(item.id)).toBe(true);expect(service.status(item.id).phase).toBe('stopping');process.kill(child.pid!,0);await service.launch(item.id,'b');expect(count).toBe(1);originalKill();await vi.waitFor(()=>expect(service.isBusy(item.id)).toBe(false));}
  finally{originalKill();}
+});
+
+it('exits after a ready game ends only after its lease has persisted', async () => {
+ const {instances,item,java}=await setup(); await instances.patchLaunch(item.id,{launcherAction:'exitOnGameEnd'});
+ let child!:ReturnType<typeof spawn>; let persist!:()=>void;
+ const original=instances.endLaunch.bind(instances);
+ vi.spyOn(instances,'endLaunch').mockImplementation(async(id,lease)=>{await new Promise<void>(r=>persist=r);await original(id,lease);});
+ const service=new LaunchService(instances,java,async()=>({name:'Name',uuid:'uuid-value',accessToken:'secret-value'}),async()=>child=spawn(process.execPath,['-e','setInterval(()=>{},1000)']));
+ const actions:string[]=[];service.windowAction=a=>actions.push(a);
+ try {
+  await service.launch(item.id,'a'); expect(actions).not.toContain('exit');
+  child.stdout!.emit('data',Buffer.from('Created textures -atlas\n'));
+  await vi.waitFor(()=>expect(service.status(item.id).gameReady).toBe(true));
+  child.kill(); await vi.waitFor(()=>expect(persist).toBeDefined());
+  expect(actions).not.toContain('exit');persist();
+  await vi.waitFor(()=>expect(actions).toContain('exit'));
+ } finally {persist?.();child?.kill();}
+});
+it('does not exit when the child fails before game readiness', async () => {
+ const {instances,item,java}=await setup();await instances.patchLaunch(item.id,{launcherAction:'exitOnGameEnd'});
+ let child!:ReturnType<typeof spawn>;const service=new LaunchService(instances,java,async()=>({name:'Name',uuid:'uuid-value',accessToken:'secret-value'}),async()=>child=spawn(process.execPath,['-e','setInterval(()=>{},1000)']));
+ const actions:string[]=[];service.windowAction=a=>actions.push(a);
+ await service.launch(item.id,'a');child.kill();await vi.waitFor(()=>expect(service.isBusy(item.id)).toBe(false));expect(actions).not.toContain('exit');
+});
+
+it('persists a main-generated JVM marker and spawned PID before treating the launch as running', async () => {
+ const {instances,item,java}=await setup();let child!:ReturnType<typeof spawn>;let observed='';
+ const service=new LaunchService(instances,java,async()=>({name:'Name',uuid:'uuid-value',accessToken:'secret-value'}),async options=>{
+  observed=options.extraJVMArgs?.find(value=>value.startsWith('-Dzhumeng.launchMarker='))?.slice('-Dzhumeng.launchMarker='.length)??'';
+  child=spawn(process.execPath,['-e','setInterval(()=>{},1000)']);return child;
+ });
+ try {
+  await service.launch(item.id,'a');
+  const registry=await instances.snapshot();
+  expect(observed).toMatch(/^[a-f0-9-]{36}$/);
+  expect(registry.leases[item.id]).toMatchObject({phase:'spawned',marker:observed,pid:child.pid});
+ } finally { await service.stop(item.id);child?.kill(); }
 });

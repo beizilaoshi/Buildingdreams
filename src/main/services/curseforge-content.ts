@@ -199,8 +199,11 @@ export class CurseForgeContent implements ContentSource {
     private secrets: ProviderSecrets,
     private fetcher: typeof fetch = (...args) => fetch(...args),
   ) {}
+  async fingerprintLookupConfigured():Promise<boolean> {
+    return !!(await this.secrets.capture()).key;
+  }
   private async run<T>(
-    job: (request: (path: string) => Promise<any>) => Promise<T>,
+    job: (request: (path: string, options?: { method?: "GET" | "POST"; body?: unknown }) => Promise<any>) => Promise<T>,
     signal?: AbortSignal,
   ): Promise<T> {
     const captured = await this.secrets.capture();
@@ -210,12 +213,16 @@ export class CurseForgeContent implements ContentSource {
       AbortSignal.timeout(20000),
       ...(signal ? [signal] : []),
     ]);
-    const request = async (path: string) => {
-      if (!/^\/v1\/mods(?:\/|\?|$)/.test(path)) throw new Error("无效来源请求");
+    const request = async (path: string, options: { method?: "GET" | "POST"; body?: unknown } = {}) => {
+      const method=options.method??"GET";
+      const fingerprintRequest=path==="/v1/fingerprints/432" && method==="POST" && options.body!==undefined;
+      if (!(/^\/v1\/mods(?:\/|\?|$)/.test(path) && method==="GET") && !fingerprintRequest) throw new Error("无效来源请求");
       let response: Response;
       try {
         response = await this.fetcher("https://api.curseforge.com" + path, {
-          headers: { "x-api-key": captured.key!, accept: "application/json" },
+          method,
+          headers: { "x-api-key": captured.key!, accept: "application/json", ...(fingerprintRequest?{"content-type":"application/json"}:{}) },
+          ...(fingerprintRequest?{body:JSON.stringify(options.body)}:{}),
           redirect: "error",
           signal: signalAll,
         });
@@ -299,6 +306,35 @@ export class CurseForgeContent implements ContentSource {
       if (v.id !== id) throw fail();
       return v;
     }, signal);
+  }
+  identifyFingerprint(fingerprint:number, expectedSize:number, expectedSha1:string, signal?:AbortSignal) {
+    if(!Number.isInteger(fingerprint)||fingerprint<0||fingerprint>0xffffffff||!Number.isSafeInteger(expectedSize)||expectedSize<0||!/^[a-f0-9]{40}$/i.test(expectedSha1)) throw new Error("无效 CurseForge 指纹");
+    return this.run(async request=>{
+      const payload=await request("/v1/fingerprints/432",{method:"POST",body:{fingerprints:[fingerprint]}});
+      const data=obj(payload.data);
+      if(typeof data.isCacheBuilt!=="boolean") throw fail();
+      if(!data.isCacheBuilt) throw new Error("CurseForge 指纹索引尚未就绪，请稍后重试");
+      const exactFingerprints=arr(data.exactFingerprints,100).map(num);
+      if(!exactFingerprints.includes(fingerprint)) return null;
+      const candidates=arr(data.exactMatches,100).flatMap(entry=>{
+        const match=obj(entry), file=obj(match.file);
+        if(num(file.gameId)!==432 || num(file.fileFingerprint)!==fingerprint) return [];
+        const modId=num(file.modId), fileId=num(file.id), size=num(file.fileLength);
+        if(!modId||!fileId||size!==expectedSize) return [];
+        const hashes=arr(file.hashes,10);
+        const sha1=hashes.find(h=>obj(h).algo===1);
+        if(sha1 && str(obj(sha1).value,40).toLowerCase()!==expectedSha1.toLowerCase()) return [];
+        return [{modId,fileId,file}];
+      });
+      if(candidates.length!==1) return null;
+      const candidate=candidates[0];
+      const project=await this.projectWith(request,`cf:${candidate.modId}`);
+      if(project.projectType!=="mod") return null;
+      const version=fileRecord(candidate.file,project);
+      const selected=version.files[0];
+      if(version.id!==`cf:${candidate.modId}:${candidate.fileId}` || selected.size!==expectedSize || selected.hashes.sha1?.toLowerCase()!==expectedSha1.toLowerCase()) return null;
+      return version;
+    },signal);
   }
   versions(id: string, filter: ContentFilter = {}, signal?: AbortSignal) {
     return this.run(async (r) => {

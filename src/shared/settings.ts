@@ -1,11 +1,16 @@
 import { DEFAULT_LAUNCH, effectiveLaunchSettings, validateLaunchSettings } from "./launch-settings";
 import { validateAppearanceProfiles } from './appearance';
 import type { Settings } from './types';
+import { DEFAULT_DOWNLOAD_POLICY } from './network-policy';
+import { hiddenNavigation } from './navigation';
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
+  ...DEFAULT_DOWNLOAD_POLICY,
+  titleImage: '', titleImageHeight: 24, downloadSource: 'auto',
+  navigationHidden: [], titleText: '筑梦 · ZHUMENG',
   checkUpdatesOnStartup: true, updateChannel: 'preview',
   backgroundAnimation: 'interactive', backgroundMotionIntensity: 0.4, backgroundMotionSpeed: 0.7,
   backgroundEffect: 'auto', backgroundQuality: 'balanced',
-  backgroundStyle: 'image', backgroundColor: '#11182e', gradientColor: '#43558a', backgroundOverlay: 0.28,
+  backgroundStyle: 'image', backgroundColor: '#11182e', gradientColor: '#43558a', gradientAnimation: false, gradientSpeed: 1, rainbowText: false, backgroundOverlay: 0.28,
   backgroundVignette: 0.35, wallpaperSaturation: 0.9, wallpaperPositionX: 50, wallpaperPositionY: 50, wallpaperScale: 1,
   glassStyle: 'frosted', glassBorderOpacity: 0.2, glassShadow: 0.25,
   fontFamily: 'system', fontScale: 1, navWidth: 96, contentWidth: 1440, cardSpacing: 20,
@@ -21,13 +26,17 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   javaPath: '', autoDownloadJava: true, memoryMb: 4096, javaArgs: [], gameDirectory: '', microsoftClientId: '',
 });
 const ranges: Partial<Record<keyof Settings, [number, number]>> = {
+  titleImageHeight: [16, 32],
+  downloadConcurrency: [1, 64], downloadSpeedLimitKib: [0, 1048576],
   backgroundMotionIntensity: [0, 1], backgroundMotionSpeed: [0.25, 2],
+  gradientSpeed: [0.25, 4],
   backgroundOverlay: [0, 0.85], backgroundVignette: [0, 1], wallpaperSaturation: [0, 2], wallpaperPositionX: [0, 100], wallpaperPositionY: [0, 100], wallpaperScale: [1, 1.5],
   glassBorderOpacity: [0, 1], glassShadow: [0, 1], fontScale: [0.85, 1.2], navWidth: [72, 128], contentWidth: [960, 1800], cardSpacing: [12, 32], homeTitleSize: [32, 76],
   wallpaperBrightness: [0, 1], wallpaperBlur: [0, 100], glassOpacity: [0, 1], glassBlur: [0, 100], glassRefraction: [0, 1],
   cornerRadius: [0, 48], openingSpeed: [0.25, 4], animationSpeed: [0.25, 4], memoryMb: [512, 131072],
 };
 const choices: Partial<Record<keyof Settings, string[]>> = {
+  downloadSource: ['auto','official','bmclapi'],
   updateChannel: ['preview','stable'],
   backgroundAnimation: ['off','ambient','interactive'], backgroundEffect: ['auto','petals','stars','none'], backgroundQuality: ['low','balanced','high'],
   backgroundStyle: ['image','gradient','solid'], glassStyle: ['frosted','clear','solid'], fontFamily: ['system','yahei','segoe'], homeTextAlign: ['left','center'], pageTransition: ['slide','fade','none'], notificationPosition: ['top-right','bottom-right'], startupPage: ['home','library','download'],
@@ -41,8 +50,9 @@ export function validateSettingsPatch(input: unknown, clamp = false): Partial<Se
     if (!Object.hasOwn(DEFAULT_SETTINGS, key)) throw new Error(`未知配置项: ${key}`);
     const field = key as keyof Settings;
     const range = ranges[field];
-    if (field === 'appearanceProfiles') { result[key] = validateAppearanceProfiles(value); } else if (field === 'launch') { result[key] = effectiveLaunchSettings(validateLaunchSettings(value)); } else if (range) {
+    if (field === 'navigationHidden') {result[key]=hiddenNavigation(value);} else if (field === 'appearanceProfiles') { result[key] = validateAppearanceProfiles(value); } else if (field === 'launch') { result[key] = effectiveLaunchSettings(validateLaunchSettings(value)); } else if (range) {
       if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`无效数字: ${key}`);
+      if ((field === 'downloadConcurrency' || field === 'downloadSpeedLimitKib') && !Number.isInteger(value)) throw new Error(`配置必须为整数: ${key}`);
       if (!clamp && (value < range[0] || value > range[1])) throw new Error(`配置超出范围: ${key}`);
       result[key] = Math.max(range[0], Math.min(range[1], value));
     } else if (choices[field]) {
@@ -55,6 +65,8 @@ export function validateSettingsPatch(input: unknown, clamp = false): Partial<Se
       if (typeof value !== typeof DEFAULT_SETTINGS[field]) throw new Error(`无效类型: ${key}`);
       if (typeof value === 'string' && (value.length > 4096 || value.includes('\0'))) throw new Error(`文本过长或包含空字符: ${key}`);
       if ((field === 'homeTitle' || field === 'homeSubtitle') && (value as string).length > (field === 'homeTitle' ? 80 : 160)) throw new Error('首页文案过长');
+      if(field==='titleImage'&&value!==''&&!/^zhumeng-wallpaper:\/\/local\/[0-9a-f-]{36}\.(png|jpe?g|webp)$/.test(value as string))throw Error('无效标题图片');
+      if(field==='titleText'&&((value as string).length>60||/[\x00-\x1f]/.test(value as string)))throw Error('标题须在60字以内，不能包含控制字符');
       if (['accentColor','backgroundColor','gradientColor'].includes(field) && !/^#[0-9a-f]{6}$/i.test(value as string)) throw new Error('无效强调色');
       if (field === 'microsoftClientId' && value !== '' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value as string)) throw new Error('无效微软客户端 ID');
       result[key] = value;

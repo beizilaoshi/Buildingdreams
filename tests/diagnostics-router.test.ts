@@ -1,0 +1,23 @@
+import {it,expect} from 'vitest';
+import {mkdtemp,mkdir,writeFile,readFile} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {CommandRouter} from '../src/main/ipc';
+import {registerDiagnosticsCommands} from '../src/main/diagnostics-router';
+it('rejects arbitrary paths/reports and exports only a retained main-owned sanitized report',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'zh-diagnostic-ipc-'));await mkdir(join(root,'logs'));
+ await writeFile(join(root,'logs/latest.log'),'accessToken=SECRET\nUnsupportedClassVersionError');
+ let output:string|null=join(root,'report.json'),copied='';const router=new CommandRouter();
+ registerDiagnosticsCommands(router,{gameDirectory:async id=>{if(id!=='known')throw Error('Unknown instance');return root;},sessionLog:()=>'',chooseImport:async()=>null,chooseExport:async()=>output,copy:text=>{copied=text;}});
+ await expect(router.invoke('diagnostics.collect',{path:root})).rejects.toThrow();
+ await expect(router.invoke('diagnostics.collect',root)).rejects.toThrow();
+ await expect(router.invoke('diagnostics.import',{})).rejects.toThrow();
+ await expect(router.invoke('diagnostics.export','fake')).rejects.toThrow();
+ const r=await router.invoke('diagnostics.collect','known') as {id:string};
+ expect(await router.invoke('diagnostics.copy',r.id)).toBe(true);expect(copied).toContain('Java 版本不兼容');expect(copied).not.toContain('SECRET');
+ await router.invoke('diagnostics.export',r.id);
+ const text=await readFile(output!,'utf8');expect(text).not.toContain('SECRET');expect(text).toContain('java-version');
+ output=null;expect(await router.invoke('diagnostics.export',r.id)).toBeNull();
+ for(let i=0;i<3;i++)await router.invoke('diagnostics.collect','known');
+ await expect(router.invoke('diagnostics.export',r.id)).rejects.toThrow('过期');
+});

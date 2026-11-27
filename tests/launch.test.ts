@@ -1,7 +1,9 @@
-import { it, expect, vi } from "vitest";
+import { afterAll, it, expect, vi } from "vitest";
 import { spawn } from "node:child_process";
-import { writeFile } from "node:fs/promises";
+import { writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { JavaService } from "../src/main/services/java";
 import { LaunchService } from "../src/main/services/launch";
 import { InstanceService } from "../src/main/services/instances";
@@ -10,6 +12,16 @@ import { mkdir, readFile } from "node:fs/promises";
 import { ModService } from "../src/main/services/mods";
 import { TaskService } from "../src/main/services/tasks";
 import { launch as xmclLaunch, type LaunchOption } from "@xmcl/core";
+const sharedResumePath=join(tmpdir(),`zhumeng-launch-test-resume-${process.pid}-${randomUUID()}.json`);
+afterAll(async()=>rm(sharedResumePath,{force:true}));
+it('rejects an instance authentication mismatch before Java setup or game spawn',async()=>{
+  const {instances,instance,java}=await setup();
+  await instances.setAuthentication(instance.id,{kind:'external',serverId:'locked'});
+  const resolve=vi.spyOn(java,'resolve'),runner=vi.fn(),provider=vi.fn(async(_id:string,_signal?:AbortSignal,policy?:unknown)=>{expect(policy).toEqual({kind:'external',serverId:'locked'});throw Error('此实例必须使用指定外置认证服务器的账户');});
+  const service=new LaunchService(instances,java,provider,runner);
+  await expect(service.launch(instance.id,'local-user')).rejects.toThrow('指定外置认证');
+  expect(resolve).not.toHaveBeenCalled();expect(runner).not.toHaveBeenCalled();
+});
 it("rejects a non-Java executable", async () => {
   await expect(new JavaService().inspect(process.execPath)).rejects.toThrow();
 });
@@ -149,7 +161,7 @@ it("validates game IPC payloads at runtime", async () => {
   const { CommandRouter } = await import("../src/main/ipc");
   const { registerGameCommands } = await import("../src/main/game-router");
   const router = new CommandRouter();
-  registerGameCommands(router, "unused");
+  registerGameCommands(router, "unused", undefined, undefined, sharedResumePath);
   for (const [command, payload] of [
     ["instances.list", {}],
     ["instances.import", 2],
@@ -246,6 +258,20 @@ it("auto-selects 64-bit Java after a 32-bit candidate when heap requires it", as
   await expect(service.launch(instance.id, "a")).resolves.toHaveProperty("pid");
   expect(selected).toBe(process.execPath);
 });
+it('launches with only x86 Java when automatic memory fits its limit',async()=>{
+  const {instances,instance}=await setup();
+  await instances.patch(instance.id,{memoryMb:4096,javaArgs:[],javaPath:undefined});
+  await instances.patchLaunch(instance.id,{memoryMode:'auto'});
+  const java=new JavaService();
+  vi.spyOn(java,'detect').mockResolvedValue([{path:'java-x86',major:17,version:'17',arch:'x86'}]);
+  let selected='',heap=0;
+  const service=new LaunchService(instances,java,async()=>({name:'N',uuid:'uuid',accessToken:'secret'}),async options=>{
+    selected=options.javaPath;heap=options.maxMemory||0;
+    return spawn(process.execPath,['-e','process.exit(0)'],{shell:false});
+  },()=>16*1024*1048576);
+  await expect(service.launch(instance.id,'a')).resolves.toHaveProperty('pid');
+  expect(selected).toBe('java-x86');expect(heap).toBeLessThanOrEqual(1024);
+});
 it("uses global Java only when an instance has no explicit executable", async () => {
   const { instances, instance, java } = await setup();
   await instances.patch(instance.id, {
@@ -300,7 +326,7 @@ it("processor resolution applies Forge upper bounds before any installer network
 
 it("Java IPC validates discriminated contexts and resolves instance requirements in main",async()=>{
   const { CommandRouter } = await import("../src/main/ipc");const { registerGameCommands } = await import("../src/main/game-router");
-  const root = await fixture(); const router = new CommandRouter();const services = registerGameCommands(router,join(root,"instances.json"));
+  const root = await fixture(); const router = new CommandRouter();const services = registerGameCommands(router,join(root,"instances.json"),undefined,undefined,sharedResumePath);
   vi.spyOn(services.java,"detect").mockResolvedValue([{path:"java17",version:"17",major:17,arch:"amd64"}]);
   const [instance] = await services.instances.importDirectory(root);
   expect(await router.invoke("java.plan",{instanceId:instance.id})).toMatchObject({selected:{path:"java17"},requirement:{preferredMajor:17}});
@@ -350,7 +376,7 @@ async function managedRouterFixture(gated = false) {
                 abort(); });
         return new Response(bytes);
     });
-    const router = new CommandRouter(), services = registerGameCommands(router, join(root, "instances.json"));
+    const router = new CommandRouter(), services = registerGameCommands(router, join(root, "instances.json"), undefined, undefined, sharedResumePath);
     const instances = await services.instances.importDirectory(root);
     return { root, router, services, instances, count: () => count, release: () => release(), restore: () => { inspect.mockRestore(); fetcher.mockRestore(); } };
 }

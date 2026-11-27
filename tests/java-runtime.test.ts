@@ -60,6 +60,8 @@ async function fixture(options: {
                     data.binary.architecture = "aarch64";
                 return Response.json([data]);
             }
+            if (u.includes("api.adoptium.net/v3/assets/version/"))
+                return Response.json([]);
             if (options.redirect)
                 return new Response(null, { status: 302, headers: { location: "https://evil.example/payload.zip" } });
             init?.signal?.throwIfAborted();

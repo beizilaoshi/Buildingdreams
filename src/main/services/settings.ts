@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_SETTINGS, validateSettingsPatch } from '../../shared/settings';
 import type { Settings } from '../../shared/types';
+import { parseSettingsTransfer } from '../../shared/settings-transfer';
 export interface SettingsFileSystem {
   mkdir: typeof mkdir; open: typeof open; readFile: typeof readFile; rename: typeof rename; rm: typeof rm;
 }
@@ -17,6 +18,17 @@ export class SettingsStore {
     return result;
   }
   read(): Promise<Settings> { return this.serialize(() => this.load()); }
+  restorePortable(patch: Partial<Settings>): Promise<Settings> {
+    // Validate and capture before queueing, then merge against the latest state in one transaction.
+    const portable = parseSettingsTransfer(JSON.stringify({ version: 1, settings: patch })).settings;
+    return this.serialize(async () => {
+      const current = await this.load();
+      const next = { ...current, ...portable,
+        launch: portable.launch ? { ...current.launch, ...portable.launch } : current.launch };
+      await this.write(next);
+      return structuredClone(next);
+    });
+  }
   patch(patch: Partial<Settings>): Promise<Settings> {
     return this.serialize(async () => {
       const valid = validateSettingsPatch(patch, true);

@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { APPEARANCE_KEYS, APPEARANCE_PRESETS, appearancePatch, resetAppearanceGroup, parseAppearance, serializeAppearance, validateAppearanceProfiles } from '../src/shared/appearance';
 import { DEFAULT_SETTINGS, validateSettingsPatch } from '../src/shared/settings';
 test('appearance presets and reset stay in appearance whitelist',()=>{
- expect(APPEARANCE_PRESETS).toHaveLength(4);
+ expect(APPEARANCE_PRESETS).toHaveLength(8);
  for(const settings of [...APPEARANCE_PRESETS.map(p=>p.settings),resetAppearanceGroup('all')]){
   expect(Object.keys(settings).every(k=>APPEARANCE_KEYS.includes(k as never))).toBe(true);
   expect(validateSettingsPatch(settings)).toEqual(settings);
@@ -34,4 +34,13 @@ test('night lake default and painterly presets preserve the original visual dire
 test('group reset follows the visible theme section',()=>{
  expect(resetAppearanceGroup('background')).not.toHaveProperty('theme');
  expect(resetAppearanceGroup('material')).toHaveProperty('theme',DEFAULT_SETTINGS.theme);
+});
+
+test('dynamic gradient and rainbow typography are bounded portable appearance settings',()=>{
+ const patch={gradientAnimation:true,gradientSpeed:2,rainbowText:true};
+ expect(validateSettingsPatch(patch)).toEqual(patch);
+ expect(appearancePatch({...DEFAULT_SETTINGS,...patch})).toMatchObject(patch);
+ expect(resetAppearanceGroup('background')).toMatchObject({gradientAnimation:false,gradientSpeed:1});
+ expect(resetAppearanceGroup('home')).toMatchObject({rainbowText:false});
+ for(const invalid of [{gradientSpeed:0},{gradientSpeed:5},{gradientAnimation:'true'},{rainbowText:1}])expect(()=>validateSettingsPatch(invalid)).toThrow();
 });

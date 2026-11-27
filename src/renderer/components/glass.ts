@@ -1,3 +1,4 @@
+import { bindRotation, rotationWallpaper } from './wallpaper-rotation';
 import type { Settings } from "../../shared/types";
 import "../customization.css";
 import { applyLiveBackground } from "./live-background";
@@ -33,12 +34,16 @@ export function applySettings(s: Settings) {
   root.dataset.notificationPosition = s.notificationPosition;
   root.dataset.homeIntro = String(s.showHomeIntro);
   root.dataset.libraryView = s.libraryView;
-  const url = wallpapers[s.wallpaper]
-    ? `./assets/${wallpapers[s.wallpaper]}.png`
+  root.dataset.gradientAnimation = String(s.gradientAnimation && !reduced);
+  root.dataset.rainbowText = String(s.rainbowText && !reduced);
+  bindRotation(() => applySettings(s), s.backgroundStyle === "image");
+  const selectedWallpaper = rotationWallpaper(s.wallpaper);
+  const url = wallpapers[selectedWallpaper]
+    ? `./assets/${wallpapers[selectedWallpaper]}.png`
     : /^zhumeng-wallpaper:\/\/local\/[a-f0-9-]+\.(png|jpe?g|webp)$/i.test(
-          s.wallpaper,
+          selectedWallpaper,
         )
-      ? s.wallpaper
+      ? selectedWallpaper
       : "./assets/moonlake.png";
   const vars: Record<string, string> = {
     "--wallpaper": `url("${new URL(url, location.href).href}")`,
@@ -53,6 +58,7 @@ export function applySettings(s: Settings) {
     "--duration": `${reduced ? 0 : 260 / s.animationSpeed}ms`,
     "--background-color": s.backgroundColor,
     "--gradient-color": s.gradientColor,
+    "--gradient-duration": `${24 / s.gradientSpeed}s`,
     "--background-overlay": String(s.backgroundOverlay),
     "--background-vignette": String(s.backgroundVignette),
     "--wall-saturation": String(s.wallpaperSaturation),
@@ -69,7 +75,7 @@ export function applySettings(s: Settings) {
     "--home-text-align": s.homeTextAlign,
   };
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-  applyLiveBackground(s, new URL(url, location.href).href);
+  applyLiveBackground({ ...s, wallpaper: selectedWallpaper }, new URL(url, location.href).href);
   document
     .querySelector("#glass-displacement feDisplacementMap")
     ?.setAttribute("scale", String(56 * s.glassRefraction));

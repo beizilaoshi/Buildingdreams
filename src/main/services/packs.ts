@@ -22,6 +22,7 @@ import type {
   PackExportOptions,
 } from "../../shared/packs";
 import { archivePath, readArchive } from "./archive";
+import { detectPack, parseLegacyPack } from "./pack-formats";
 import { contained, safeDestination } from "./network";
 import { InstallService, instanceName, versionSegment } from "./install";
 import { newPackName } from "../../shared/content";
@@ -81,6 +82,7 @@ export function parsePack(
         throw new Error("无效客户端环境");
     }
   } else {
+    if (format !== "curseforge") throw new Error("请使用传统整合包解析器");
     if (
       raw.manifestType !== "minecraftModpack" ||
       raw.manifestVersion !== 1 ||
@@ -213,24 +215,105 @@ export class PackService {
   async inspect(file: string): Promise<PackPreview> {
     const zip = await readArchive(file);
     try {
-      const format = zip.entries.some(
-        (e) => e.fileName === "modrinth.index.json",
-      )
-        ? "modrinth"
-        : "curseforge";
-      return parsePack(
-        JSON.parse(
-          (
-            await zip.read(
-              format === "modrinth" ? "modrinth.index.json" : "manifest.json",
-            )
-          ).toString("utf8"),
-        ),
-        format,
-      );
+      let descriptor;
+      try {
+        descriptor = detectPack(zip.entries.map(e => e.fileName));
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.startsWith("未识别的整合包格式")) throw error;
+        return await this.inspectPlainMinecraftZip(zip);
+      }
+      const raw = JSON.parse((await zip.read(descriptor.manifestPath)).toString("utf8"));
+      let format = descriptor.format;
+      if (format === "minecraft-zip") throw new Error("整合包清单格式无效");
+      // MCBBS also permits its metadata under manifest.json.
+      if (format === "curseforge" && Array.isArray(raw.addons) && raw.manifestType !== "minecraftModpack") format = "mcbbs";
+      const preview = format === "modrinth" || format === "curseforge"
+        ? parsePack(raw, format)
+        : parseLegacyPack(raw, format, format === "multimc" ? (await zip.read(descriptor.prefix + "instance.cfg", 1024 * 1024)).toString("utf8") : "",
+          zip.entries.map(e => e.fileName).filter(n => n.startsWith(descriptor.prefix)).map(n => n.slice(descriptor.prefix.length)));
+      return {...preview, manifestPath: descriptor.manifestPath, archivePrefix: descriptor.prefix,
+        overrides: descriptor.prefix + preview.overrides};
     } finally {
       zip.close();
     }
+  }
+  private async inspectPlainMinecraftZip(zip: Awaited<ReturnType<typeof readArchive>>): Promise<PackPreview> {
+    const versions: NonNullable<PackPreview["vanillaVersions"]> = [];
+    const entries = zip.entries.map((entry) => entry.fileName);
+    const seen = new Set<string>();
+    for (const path of entries) {
+      const parts = path.split("/");
+      const marker = parts.findIndex((part) => part.toLowerCase() === "versions");
+      if (marker < 0 || marker + 2 >= parts.length) continue;
+      const id = parts[marker + 1];
+      if (parts[marker + 2] !== `${id}.json` || path.endsWith("/")) continue;
+      const rootPrefix = parts.slice(0, marker).join("/") + (marker ? "/" : "");
+      // Accept only a direct versions/ tree or a conventional .minecraft/versions tree.
+      if (marker !== 0 && parts[marker - 1].toLowerCase() !== ".minecraft") continue;
+      try { versionSegment(id); } catch { continue; }
+      const key = `${rootPrefix.toLowerCase()}\0${id.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      let raw: any;
+      try { raw = JSON.parse((await zip.read(path, 4 * 1024 * 1024)).toString("utf8")); }
+      catch { continue; }
+      if (!this.isPlainVanillaMetadata(raw, id)) continue;
+      seen.add(key);
+      versions.push({ id, ...(typeof raw.type === "string" ? { type: raw.type } : {}), rootPrefix });
+    }
+    if (!versions.length) throw new Error("此 ZIP 不是可安全导入的标准 Minecraft 版本目录；自定义版本、加载器与启动配置暂不支持");
+    const ids = new Set<string>();
+    for (const candidate of versions) {
+      const key = candidate.id.toLowerCase();
+      if (ids.has(key)) throw new Error("ZIP 中存在多个同名版本目录，无法安全确定对应的 .minecraft 内容");
+      ids.add(key);
+    }
+    versions.sort((a, b) => a.id.localeCompare(b.id));
+    return {
+      format: "minecraft-zip",
+      name: "导入的 Minecraft 游戏文件",
+      minecraft: versions.length === 1 ? versions[0].id : "",
+      files: [], missingFiles: [], overrides: "",
+      warnings: ["将通过 Mojang 官方清单重新安装所选原版；仅导入 mods、config、resourcepacks、shaderpacks、kubejs、scripts、defaultconfigs 文件夹。版本 JSON、JAR、库、存档和启动器配置不会从 ZIP 导入。"],
+      vanillaVersions: versions,
+    };
+  }
+  private isPlainVanillaMetadata(raw: any, id: string): boolean {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw) || raw.id !== id || raw.inheritsFrom !== undefined) return false;
+    const allowed = new Set(["id", "type", "time", "releaseTime", "minimumLauncherVersion", "assets", "assetIndex", "downloads", "libraries", "mainClass", "arguments", "minecraftArguments", "logging", "javaVersion", "complianceLevel"]);
+    if (Object.keys(raw).some((key) => !allowed.has(key))) return false;
+    // A launcher ZIP's profile is only a hint for finding a version ID. Restrict
+    // it to the known vanilla entry points and dependency namespaces so an
+    // OptiFine/custom profile cannot be advertised as a vanilla import.
+    const vanillaMainClasses = new Set([
+      "net.minecraft.client.main.Main",
+      "net.minecraft.client.Minecraft",
+    ]);
+    const vanillaLibraryGroups = new Set([
+      "at.yawk.lz4", "ca.weblite", "com.azure", "com.fasterxml.jackson.core",
+      "com.github.oshi", "com.github.stephenc.jcip", "com.google.code.findbugs", "com.google.code.gson",
+      "com.google.errorprone", "com.google.guava", "com.google.j2objc",
+      "com.ibm.icu", "com.microsoft.azure", "com.mojang", "com.nimbusds",
+      "com.paulscode", "commons-codec", "commons-io", "commons-logging", "io.netty",
+      "it.unimi.dsi", "java3d", "net.java.dev.jna", "net.java.jinput",
+      "net.java.jutils", "net.minecraft", "net.minidev", "net.sf.jopt-simple",
+      "net.sf.trove4j", "org.apache.commons", "org.apache.httpcomponents",
+      "org.apache.logging.log4j", "org.jcraft", "org.jetbrains", "org.joml",
+      "org.jspecify", "org.lz4", "org.lwjgl", "org.lwjgl.lwjgl", "org.ow2.asm",
+      "org.slf4j", "oshi-project", "tv.twitch",
+    ]);
+    if (typeof raw.mainClass !== "string" || !vanillaMainClasses.has(raw.mainClass) || !Array.isArray(raw.libraries) || !raw.downloads?.client ||
+      typeof raw.downloads.client.url !== "string" || typeof raw.downloads.client.sha1 !== "string" ||
+      !/^https:\/\//i.test(raw.downloads.client.url) ||
+      !/^[a-f0-9]{40}$/i.test(raw.downloads.client.sha1)) return false;
+    // Recognize only vanilla-style launcher metadata. The ZIP's executable
+    // metadata is never installed or used; the official manifest is fetched
+    // afresh during installation.
+    for (const library of raw.libraries) {
+      if (!library || typeof library.name !== "string" || /optifine|fabric-loader|quilt-loader|forge|neoforge/i.test(library.name)) return false;
+      const coordinates = /^([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+):([A-Za-z0-9_.+\-]+)(?::[A-Za-z0-9_.-]+)?(?:@[A-Za-z0-9]+)?$/.exec(library.name);
+      if (!coordinates || !vanillaLibraryGroups.has(coordinates[1])) return false;
+    }
+    return typeof raw.assets === "string" || (!!raw.assetIndex && typeof raw.assetIndex.id === "string");
   }
   install(
     file: string,
@@ -253,8 +336,33 @@ export class PackService {
       id = randomUUID(),
       root = contained(service.root, id),
       gameDir = join(root, "game");
+    if (preview.format !== "minecraft-zip" && options.selectedVersionId !== undefined)
+      throw new Error("版本选择参数仅适用于普通 Minecraft ZIP");
     const zip = await readArchive(file);
     try {
+      if (preview.format === "minecraft-zip") {
+        const candidates = preview.vanillaVersions ?? [];
+        const selectedId = options.selectedVersionId ?? (candidates.length === 1 ? candidates[0].id : undefined);
+        if (!selectedId || !candidates.some((candidate) => candidate.id === selectedId))
+          throw new Error(candidates.length > 1 ? "请明确选择要导入的 Minecraft 原版版本" : "所选版本不在 ZIP 检查结果中");
+        const selectedVersion = candidates.find((candidate) => candidate.id === selectedId)!;
+        if (options.suppliedFiles?.length || options.curseForgeKey || options.includeOptional !== undefined)
+          throw new Error("原版 ZIP 导入不接受整合包补齐参数");
+        await mkdir(gameDir, { recursive: true });
+        await service.installInto(root, selectedId, context);
+        const allowedUserDirs = ["mods", "config", "resourcepacks", "shaderpacks", "kubejs", "scripts", "defaultconfigs"];
+        for (const dir of allowedUserDirs) {
+          context.signal.throwIfAborted();
+          await zip.extract(gameDir, `${selectedVersion.rootPrefix}${dir}/`, context.signal);
+        }
+        let item: Instance = await service.instances.applyNewDefaults({
+          id, name: instanceName(name), resourceDir: root, gameDir,
+          minecraft: selectedId, versionId: selectedId, status: "ready",
+          memoryMb: 2048, javaArgs: [],
+        });
+        context.signal.throwIfAborted();
+        return await service.instances.registerOwned(item, context.signal);
+      }
       const downloads: PackFile[] = [...preview.files];
       const localFiles: { source: string; path: string; sha1: string }[] = [];
       for (const missing of preview.missingFiles) {
@@ -423,7 +531,7 @@ export class PackService {
         context.signal,
       );
       if (preview.format === "modrinth")
-        await zip.extract(gameDir, "client-overrides/", context.signal);
+        await zip.extract(gameDir, (preview.archivePrefix ?? "") + "client-overrides/", context.signal);
       await writeFile(
         join(root, "pack-source.json"),
         JSON.stringify({
@@ -432,9 +540,9 @@ export class PackService {
           manifest: JSON.parse(
             (
               await zip.read(
-                preview.format === "modrinth"
+                preview.manifestPath ?? (preview.format === "modrinth"
                   ? "modrinth.index.json"
-                  : "manifest.json",
+                  : "manifest.json"),
               )
             ).toString("utf8"),
           ),

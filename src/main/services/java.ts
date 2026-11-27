@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
+import { discoverWindowsJava, javaPreferenceRoots, officialRuntimeCandidates } from './java-discovery';
 import { promisify } from "node:util";
-import { readdir, realpath } from "node:fs/promises";
+import { access, readdir, realpath } from "node:fs/promises";
 import { join, delimiter, basename, dirname } from "node:path";
 import type { JavaRuntime, JavaPlan } from "../../shared/types";
 import { javaRequirement, selectJava, type JavaRequirementInput } from "../../shared/java-requirements";
@@ -24,6 +25,8 @@ export interface JavaResolveOptions {
     autoDownload?: boolean;
     context?: TaskContext;
     roots?: string[];
+    /** Restrict discovery to the instance's version folder (PCL mode). */
+    instanceOnly?: boolean;
 }
 /** Shared boundary used by launch, processors and the Java configuration panel. */
 export class JavaService {
@@ -35,11 +38,24 @@ export class JavaService {
         const path = await realpath(candidate);
         const { stdout, stderr } = await exec(path, ["-XshowSettings:properties", "-version"], { timeout: 10000, maxBuffer: 131072, windowsHide: true, shell: false });
         const output = stdout + "\n" + stderr;
-        return parseJavaOutput(path, output);
+        const runtime = parseJavaOutput(path, output);
+        try {
+            await access(join(dirname(path), process.platform === "win32" ? "javac.exe" : "javac"));
+            runtime.image = "jdk";
+        }
+        catch (error) {
+            runtime.image = (error as NodeJS.ErrnoException).code === "ENOENT" ? "jre" : undefined;
+        }
+        return runtime;
     }
-    async detect(roots: string[] = []): Promise<JavaRuntime[]> {
+    async detect(roots: string[] = [], instanceOnly = false): Promise<JavaRuntime[]> {
         const executable = process.platform === "win32" ? "java.exe" : "java";
-        const candidates = new Set<string>((process.env.PATH ?? "").split(delimiter).filter(Boolean).slice(0, 128).map(p => join(p, executable)));
+        const candidates = new Set<string>(instanceOnly ? await officialRuntimeCandidates(roots.slice(0, 1)) : [...await discoverWindowsJava(roots),...(process.env.PATH ?? "").split(delimiter).filter(Boolean).slice(0, 128).map(p => join(p, executable))]);
+        if (instanceOnly) {
+            const results: JavaRuntime[] = [];
+            for (const path of [...candidates].slice(0, 128)) try { results.push(await this.inspect(path)); } catch { /* skip unusable local Java */ }
+            return [...new Map(results.map(j => [j.path.toLowerCase(), j])).values()];
+        }
         if (process.env.JAVA_HOME)
             candidates.add(join(process.env.JAVA_HOME, "bin", executable));
         const bases = process.platform === "win32" ? ["Java", "Eclipse Adoptium", "Microsoft", "Zulu", "BellSoft", "Amazon Corretto", "Semeru"].flatMap(vendor => [process.env.ProgramFiles ?? "C:\\Program Files", process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)"].map(base => join(base, vendor))) : [];
@@ -51,7 +67,7 @@ export class JavaService {
             }
             catch { /* optional vendor */ }
         }
-        // Bounded known locations only; no recursive drive crawl or official-launcher runtime scan.
+        // Known registry/official runtime roots, bounded and link-free; no recursive drive crawl.
         for (const root of roots.slice(0, 4))
             for (const folder of ["java", "jre", "jdk", "runtime/java", "runtime/jre"])
                 candidates.add(join(root, folder, "bin", executable));
@@ -72,11 +88,11 @@ export class JavaService {
     }
     async plan(input: JavaRequirementInput, options: JavaResolveOptions): Promise<JavaPlan> {
         const requirement = javaRequirement(input);
-        const detected = options.manualPath ? [] : await this.detect(options.roots);
+        const detected = options.manualPath ? [] : await this.detect(options.roots, options.instanceOnly);
         let selected: JavaRuntime | undefined, error: string | undefined;
         try {
             const manual = options.manualPath ? await this.inspect(options.manualPath) : undefined;
-            selected = selectJava(requirement, detected, options.memoryMb, process.arch, manual);
+            selected = selectJava(requirement, detected, options.memoryMb, process.arch, manual, process.platform === "win32" ? javaPreferenceRoots(options.roots) : options.roots ?? []);
         }
         catch (e) {
             error = `手动 Java 不可用：${e instanceof Error ? e.message : String(e)}；请选择有效路径或切换自动选择`;
@@ -87,11 +103,11 @@ export class JavaService {
         if (!this.managed || !this.tasks)
             throw new Error("Java 自动下载服务尚未连接");
         const requirement = javaRequirement(input);
-        const key = JSON.stringify([requirement, options?.manualPath, options?.memoryMb, options?.autoDownload, options?.ownerScope]);
+        const key = JSON.stringify([requirement, input.runtimeComponent, options?.manualPath, options?.memoryMb, options?.autoDownload, options?.ownerScope]);
         const active = this.configuring.get(key);
         if (active)
             return active;
-        const id = this.tasks.start(`自动配置 Java ${requirement.preferredMajor}（Eclipse Temurin）`, async (context) => {
+        const id = this.tasks.start(`自动配置 Java ${requirement.preferredMajor}（Mojang / Temurin 官方运行时）`, async (context) => {
             try {
                 if (options) {
                     const plan = await this.plan(input, options);
@@ -102,10 +118,12 @@ export class JavaService {
                         return plan.selected;
                     if (options.autoDownload === false)
                         throw new Error(`需要 Java ${requirement.preferredMajor}；自动下载已关闭`);
+                    if (options.instanceOnly)
+                        throw new Error("此实例设置为仅使用版本目录中的 Java；未检测到可用 Java，请将 Java 放入版本目录或更改选择模式");
                 }
                 if (process.platform !== "win32" || process.arch !== "x64")
                     throw new Error("自动下载目前支持 Windows x64，请手动指定 Java");
-                return await this.managed!.install(requirement, context);
+                return await this.managed!.install(requirement, context, input.runtimeComponent);
             }
             finally {
                 this.configuring.delete(key);
@@ -124,6 +142,8 @@ export class JavaService {
             return plan.selected;
         if (options.autoDownload === false || !this.managed || !this.tasks)
             throw new Error(`需要 Java ${plan.requirement.preferredMajor}；${plan.reason}`);
+        if (options.instanceOnly)
+            throw new Error("此实例设置为仅使用版本目录中的 Java；未检测到可用 Java，请将 Java 放入版本目录或更改选择模式");
         if (process.platform !== "win32" || process.arch !== "x64")
             throw new Error("自动下载目前支持 Windows x64；请手动选择当前系统兼容的 Java");
         const id = this.ensure(input, options.ownerScope ? { ...options, context: undefined } : undefined);

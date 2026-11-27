@@ -155,9 +155,9 @@ export class XmclLoaderAdapter implements LoaderAdapter {
     const resolved = await Version.parse(root, instance.versionId);
     const defaults = await this.javaDefaults();
     const runtime = await this.java.resolve({
-      minecraft:instance.minecraft,metadataMajor:resolved.javaVersion?.majorVersion,loader:{kind,version},
+      minecraft:instance.minecraft,metadataMajor:resolved.javaVersion?.majorVersion,runtimeComponent:resolved.javaVersion?.component,customRange:instance.javaMinMajor === undefined && instance.javaMaxMajor === undefined ? undefined : {minMajor:instance.javaMinMajor,maxMajor:instance.javaMaxMajor},loader:{kind,version},
       optifine:resolved.libraries.some(l=>/optifine/i.test(l.name)),liteLoader:resolved.libraries.some(l=>/liteloader/i.test(l.name)),
-    },{manualPath:instance.javaPath ?? defaults.javaPath,memoryMb:instance.memoryMb,autoDownload:defaults.autoDownloadJava !== false,context,roots:[root]});
+    },{manualPath:instance.javaMode === "instance" ? undefined : instance.javaPath ?? defaults.javaPath,memoryMb:instance.memoryMb,autoDownload:defaults.autoDownloadJava !== false,context,roots:instance.javaMode === "instance" ? [join(root,"versions",instance.versionId)] : [root],instanceOnly:instance.javaMode === "instance"});
     const project = instance.minecraft === "1.20.1" ? "forge" : "neoforge";
     const fullVersion =
       kind === "forge" ? `${instance.minecraft}-${version}` : version;
@@ -372,12 +372,10 @@ export class LoaderService {
   install(instanceId: string, kind: LoaderKind, version: string): string {
     versionSegment(version);
     return this.installService.tasks.start(
-      `安装 ${kind} ${version}`,
+      `${kind === "fabric" ? "Fabric" : kind === "quilt" ? "Quilt" : kind === "forge" ? "Forge" : "NeoForge"} ${version}`,
       async (context) => {
         const service = this.installService,
           instance = await service.instances.get(instanceId);
-        if (instance.loader)
-          throw new Error("此实例已有加载器，请创建独立实例安装其他加载器");
         if (
           !(
             await this.adapter.versions(

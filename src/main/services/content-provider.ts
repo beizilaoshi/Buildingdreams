@@ -1,3 +1,4 @@
+import { aggregateSearch } from "./content-aggregate";
 import type {
   ContentFilter,
   ContentProject,
@@ -39,6 +40,7 @@ export function parseContentId(
   };
 }
 export class ContentProviders implements ContentSource {
+  private readonly searchSnapshots = new Map<string, string>();
   constructor(
     readonly modrinth: ContentSource,
     readonly curseforge: ContentSource,
@@ -47,6 +49,22 @@ export class ContentProviders implements ContentSource {
     return this[parseContentId(id, kind).provider];
   }
   search(q: string, f: ContentFilter = {}, s?: AbortSignal) {
+    if (f.provider === "all") {
+      const key = JSON.stringify([q, f.projectType, f.tag, f.minecraft, f.loader]);
+      return aggregateSearch(this, q, f, s).then(page => {
+        s?.throwIfAborted();
+        const snapshot = JSON.stringify(page.sources?.map(source => [source.provider, source.status, source.total]));
+        const previous = this.searchSnapshots.get(key);
+        if ((f.offset ?? 0) > 0 && previous !== undefined && previous !== snapshot)
+          throw new Error("来源或项目总数已变化，请从第一页重新搜索，避免翻页重复或遗漏");
+        if ((f.offset ?? 0) === 0 || previous === undefined) {
+          this.searchSnapshots.delete(key);
+          this.searchSnapshots.set(key, snapshot);
+          if (this.searchSnapshots.size > 100) this.searchSnapshots.delete(this.searchSnapshots.keys().next().value!);
+        }
+        return page;
+      });
+    }
     return this[f.provider ?? "modrinth"].search(q, f, s);
   }
   project(id: string, s?: AbortSignal) {

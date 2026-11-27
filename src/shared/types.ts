@@ -1,4 +1,9 @@
 import type { LaunchSettings } from "./launch-settings";
+import type { MusicCommandMap } from './music';
+import type { InstallComponentCommandMap } from './install-components';
+import type { LinkCommandMap } from './link';
+import type { ExternalAuthCommandMap } from './external-auth';
+import type { WallpaperCommandMap } from './wallpaper';
 import type { MinecraftCatalog } from "./minecraft-versions";
 import type {
   ContentFilter,
@@ -11,6 +16,13 @@ import type {
 export type UpdateChannel = 'preview' | 'stable';
 export interface UpdateStatus { currentVersion:string; channel:UpdateChannel; state:'idle'|'checking'|'current'|'available'|'error'; latest?:{version:string;releaseUrl:string;downloadUrl?:string}; checkedAt?:number; error?:string; }
 export interface Settings {
+  navigationHidden: import('./navigation').NavigationPage[];
+  titleText: string;
+  titleImage: string;
+  titleImageHeight: number;
+  downloadSource: 'auto' | 'official' | 'bmclapi';
+  downloadConcurrency: number;
+  downloadSpeedLimitKib: number;
   checkUpdatesOnStartup: boolean;
   updateChannel: UpdateChannel;
   backgroundAnimation: "off" | "ambient" | "interactive";
@@ -21,6 +33,9 @@ export interface Settings {
   backgroundStyle: "image" | "gradient" | "solid";
   backgroundColor: string;
   gradientColor: string;
+  gradientAnimation: boolean;
+  gradientSpeed: number;
+  rainbowText: boolean;
   backgroundOverlay: number;
   backgroundVignette: number;
   wallpaperSaturation: number;
@@ -86,6 +101,8 @@ export interface JavaRuntime {
   version: string;
   major: number;
   arch: string;
+    /** Inferred from a sibling javac executable; unknown distributions stay unspecified. */
+    image?: "jre" | "jdk";
 }
 export type JavaContext =
   | { instanceId: string }
@@ -116,11 +133,15 @@ export interface LaunchState {
   pid?: number; code?: number | null; signal?: string | null; error?: string; time: number;
 }
 export interface Instance {
+  authentication?: import('./external-auth').ExternalAuthPolicy;
   description?: string;
   category?: string;
+  displayType?: 'auto' | 'normal' | 'mod' | 'uncommon' | 'fool' | 'hidden';
   favorite?: boolean;
   /** Managed PNG basename, never an arbitrary URI. */
   icon?: string;
+  /** Managed per-instance PNG cover basename, never an arbitrary URI. */
+  cover?: string;
   launch?: Partial<LaunchSettings>;
   versionId: string;
   resourceDir: string;
@@ -129,23 +150,36 @@ export interface Instance {
   id: string;
   name: string;
   gameDir: string;
+  /** Explicit user data-directory mode; keeps isolation semantics when resource roots change. */
+  gameDirMode?: "shared" | "isolated" | "custom";
   minecraft: string;
   loader?: { kind: LoaderKind; version: string };
   memoryMb: number;
   javaArgs: string[];
   javaPath?: string;
+  /** Optional per-instance Java major range override (PCL-style compatibility range). */
+  javaMinMajor?: number;
+  javaMaxMajor?: number;
+  /** PCL-style mode that restricts Java discovery to this Minecraft version folder. */
+  javaMode?: "auto" | "instance";
 }
 export interface GameDirectory { id: string; path: string; name: string }
 export interface InstanceDeletePlan { token: string; instanceId: string; paths: string[]; expires: number }
 export interface InstanceComponents { minecraft: string; components: string[] }
+export type InstanceFolder = "root" | "version" | "mods" | "saves" | "resourcepacks" | "screenshots";
+export interface InstanceFileEntry { name: string; kind: "file" | "directory"; size: number; modifiedAt: number }
+export interface InstanceFolderListing { folder: InstanceFolder; relativePath: string; entries: InstanceFileEntry[]; truncated: boolean; nextOffset?: number }
+export interface WorldBackup { id:string; world:string; createdAt:number; bytes:number; files:number; sha256:string }
 export interface AccountSummary {
   id: string;
   name: string;
-  kind: "local" | "microsoft";
+  kind: "local" | "microsoft" | "external";
+  providerName?: string;
   status: "ready" | "expired" | "unlicensed";
   uuid: string;
 }
 export type AccountAppearance =
+  | {accountId:string;source:'custom';png:string;model:'classic'|'slim'}
   | { accountId: string; source: "official"; png: string }
   | {
       accountId: string;
@@ -174,16 +208,43 @@ export interface TaskSnapshot {
   error?: string;
 }
 /** Extend this map and register a runtime validator when adding a capability. */
-export interface CommandMap {
+  export interface CommandMap extends MusicCommandMap, InstallComponentCommandMap, LinkCommandMap, ExternalAuthCommandMap, WallpaperCommandMap {
+    "instances.authentication":{payload:{id:string;authentication:import('./external-auth').ExternalAuthPolicy};result:Instance};
+    "mods.identify":{payload:{id:string;items:{fileName:string;sha1:string}[]};result:{scope:string;results:import('./mod-identification').ModIdentificationResult[]}};
+    "homeContent.read":{payload:undefined;result:import('./home-content').HomeContentState};
+    "homeContent.preset":{payload:undefined;result:import('./home-content').HomeContentState};
+    "homeContent.refresh":{payload:undefined;result:import('./home-content').HomeContentState};
+    "homeContent.clear":{payload:undefined;result:import('./home-content').HomeContentState};
+    "homeContent.enable":{payload:boolean;result:import('./home-content').HomeContentState};
+    "homeContent.remote":{payload:string;result:import('./home-content').HomeContentState};
+    "homeContent.import":{payload:undefined;result:import('./home-content').HomeContentState|null};
+    "homeContent.openExternal":{payload:string;result:void};
+    "accounts.skinRefresh":{payload:string;result:AccountAppearance};
+    "accounts.skinPick":{payload:undefined;result:import('./skin').SkinSelection|null};
+    "accounts.skinSave":{payload:string;result:boolean};
+    "accounts.skinLocal":{payload:{id:string;png:string;model:'classic'|'slim'};result:AccountAppearance};
+    "accounts.skinReset":{payload:string;result:void};
+    "accounts.skinProfile":{payload:string;result:import('./skin').SkinProfile};
+    "accounts.skinUpload":{payload:{id:string;png:string;model:'classic'|'slim'};result:import('./skin').SkinProfile};
+    "accounts.skinCape":{payload:{id:string;capeId:string|null};result:import('./skin').SkinProfile};
+    "app.copySupportInfo": {payload:undefined;result:void};
+    "app.openFeedback": {payload:undefined;result:void};
+    "diagnostics.collect": {payload:string;result:{id:string;report:import('./diagnostics').DiagnosticReport}};
+    "diagnostics.copy": {payload:string;result:boolean};
+    "diagnostics.import": {payload:undefined;result:{id:string;report:import('./diagnostics').DiagnosticReport}|null};
+    "diagnostics.export": {payload:string;result:string|null};
+    "settings.export": {payload:undefined;result:string|null};
+    "settings.importPreview": {payload:undefined;result:import('./settings-transfer').SettingsTransferPreview|null};
+    "settings.importApply": {payload:string;result:Settings};
   "appearance.export": { payload: undefined; result: string | null };
   "appearance.import": { payload: undefined; result: Partial<Settings> | null };
   "window.action": { payload: "minimize" | "maximize" | "close"; result: void };
+    "window.ready": { payload: boolean; result: void };
   "dialog.choose": {
     payload:
       "wallpaper" | "java" | "game" | "mod" | "pack" | "supplied" | "export";
     result: string | null;
   };
-  "app.openInstance": { payload: string; result: void };
   "app.openVerification": { payload: string; result: void };
   "updates.status": { payload: undefined; result: UpdateStatus };
   "updates.check": { payload: undefined; result: UpdateStatus };
@@ -356,8 +417,9 @@ export interface CommandMap {
     payload: { instanceId: string; kind: LoaderKind; version: string };
     result: string;
   };
+    "instances.useVanilla": { payload: string; result: Instance };
   "instances.list": { payload: undefined; result: Instance[] };
-  "instances.metadata": {payload:{id:string;metadata:Partial<Pick<Instance,'name'|'description'|'category'|'favorite'>>};result:Instance};
+  "instances.metadata": {payload:{id:string;metadata:Partial<Pick<Instance,'name'|'description'|'category'|'displayType'|'favorite'>>};result:Instance};
   "instances.mergeFavorites": {payload:string[];result:void};
   "instances.components": {payload:string;result:InstanceComponents};
   "instances.unregister": {payload:string;result:void};
@@ -370,7 +432,18 @@ export interface CommandMap {
   "directories.scan": {payload:string;result:Instance[]};
   "instances.chooseIcon": {payload:string;result:Instance|null};
   "instances.icon": {payload:string;result:string|null};
-  "instances.openFolder": {payload:{id:string;folder:'root'|'mods'|'saves'|'resourcepacks'|'screenshots'};result:void};
+  "instances.clearIcon": {payload:string;result:Instance};
+  "instances.chooseCover": {payload:string;result:Instance|null};
+  "instances.cover": {payload:string;result:string|null};
+  "instances.clearCover": {payload:string;result:Instance};
+  "instances.browseFolder": {payload:{id:string;folder:InstanceFolder;relativePath?:string;offset?:number};result:InstanceFolderListing};
+  "worlds.list": {payload:string;result:string[]};
+  "worldBackups.list": {payload:{id:string;world:string};result:WorldBackup[]};
+  "worldBackups.usage": {payload:string;result:{backups:number;bytes:number}};
+  "worldBackups.create": {payload:{id:string;world:string};result:WorldBackup};
+  "worldBackups.restore": {payload:{id:string;world:string;backupId:string};result:WorldBackup|null};
+  "worldBackups.delete": {payload:{id:string;world:string;backupId:string};result:void};
+  "instances.isolation": {payload:{id:string;isolated:boolean};result:Instance};
   "instances.import": { payload: string; result: Instance[] };
   "instances.mapGameDirectory": {
     payload: { id: string; gameDir: string };
@@ -382,6 +455,9 @@ export interface CommandMap {
       memoryMb: number;
       javaArgs: string[];
       javaPath?: string;
+      javaMinMajor?: number;
+      javaMaxMajor?: number;
+      javaMode?: "auto" | "instance";
     };
     result: Instance;
   };

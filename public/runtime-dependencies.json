@@ -8,7 +8,7 @@
       "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
       "directory": "types/http-cache-semantics"
     },
-    "packagePath": "node_modules/@types/http-cache-semantics",
+    "packagePath": "../../node_modules/@types/http-cache-semantics",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -22,7 +22,7 @@
       "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
       "directory": "types/node"
     },
-    "packagePath": "node_modules/@types/node",
+    "packagePath": "../../node_modules/@types/node",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -36,7 +36,7 @@
       "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
       "directory": "types/yauzl"
     },
-    "packagePath": "node_modules/@types/yauzl",
+    "packagePath": "../../node_modules/@types/yauzl",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -49,7 +49,7 @@
       "type": "git",
       "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
     },
-    "packagePath": "node_modules/@xmcl/asm",
+    "packagePath": "../../node_modules/@xmcl/asm",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -62,7 +62,7 @@
       "type": "git",
       "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
     },
-    "packagePath": "node_modules/@xmcl/core",
+    "packagePath": "../../node_modules/@xmcl/core",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -75,7 +75,7 @@
       "type": "git",
       "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
     },
-    "packagePath": "node_modules/@xmcl/file-transfer",
+    "packagePath": "../../node_modules/@xmcl/file-transfer",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -88,7 +88,7 @@
       "type": "git",
       "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
     },
-    "packagePath": "node_modules/@xmcl/forge-site-parser",
+    "packagePath": "../../node_modules/@xmcl/forge-site-parser",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -101,7 +101,7 @@
       "type": "git",
       "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
     },
-    "packagePath": "node_modules/@xmcl/installer",
+    "packagePath": "../../node_modules/@xmcl/installer",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -114,7 +114,7 @@
       "type": "git",
       "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
     },
-    "packagePath": "node_modules/@xmcl/task",
+    "packagePath": "../../node_modules/@xmcl/task",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -127,7 +127,7 @@
       "type": "git",
       "url": "git+https://github.com/Voxelum/minecraft-launcher-core-node.git"
     },
-    "packagePath": "node_modules/@xmcl/unzip",
+    "packagePath": "../../node_modules/@xmcl/unzip",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -140,7 +140,7 @@
       "type": "git",
       "url": "https://github.com/fb55/boolbase"
     },
-    "packagePath": "node_modules/boolbase",
+    "packagePath": "../../node_modules/boolbase",
     "licenseFiles": []
   },
   {
@@ -151,7 +151,7 @@
       "type": "git",
       "url": "git://github.com/brianloveswords/buffer-crc32.git"
     },
-    "packagePath": "node_modules/buffer-crc32",
+    "packagePath": "../../node_modules/buffer-crc32",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -164,7 +164,7 @@
       "type": "git",
       "url": "git://github.com/brianloveswords/buffer-crc32.git"
     },
-    "packagePath": "node_modules/yazl/node_modules/buffer-crc32",
+    "packagePath": "../../node_modules/yazl/node_modules/buffer-crc32",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -177,7 +177,7 @@
       "type": "git",
       "url": "git://github.com/fb55/css-select.git"
     },
-    "packagePath": "node_modules/css-select",
+    "packagePath": "../../node_modules/css-select",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -190,7 +190,7 @@
       "type": "git",
       "url": "https://github.com/fb55/css-what"
     },
-    "packagePath": "node_modules/css-what",
+    "packagePath": "../../node_modules/css-what",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -203,7 +203,7 @@
       "type": "git",
       "url": "git://github.com/cheeriojs/dom-serializer.git"
     },
-    "packagePath": "node_modules/dom-serializer",
+    "packagePath": "../../node_modules/dom-serializer",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -216,7 +216,7 @@
       "type": "git",
       "url": "git://github.com/fb55/domelementtype.git"
     },
-    "packagePath": "node_modules/domelementtype",
+    "packagePath": "../../node_modules/domelementtype",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -229,7 +229,7 @@
       "type": "git",
       "url": "git://github.com/fb55/domhandler.git"
     },
-    "packagePath": "node_modules/domhandler",
+    "packagePath": "../../node_modules/domhandler",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -242,7 +242,7 @@
       "type": "git",
       "url": "git://github.com/fb55/domutils.git"
     },
-    "packagePath": "node_modules/domutils",
+    "packagePath": "../../node_modules/domutils",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -252,7 +252,7 @@
     "version": "45.2.1",
     "license": "MIT",
     "repository": "https://github.com/electron/electron",
-    "packagePath": "node_modules/electron",
+    "packagePath": "../../node_modules/electron",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -265,7 +265,7 @@
       "type": "git",
       "url": "git://github.com/fb55/entities.git"
     },
-    "packagePath": "node_modules/entities",
+    "packagePath": "../../node_modules/entities",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -278,7 +278,7 @@
       "type": "git",
       "url": "git://github.com/andrewrk/node-fd-slicer.git"
     },
-    "packagePath": "node_modules/fd-slicer",
+    "packagePath": "../../node_modules/fd-slicer",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -291,7 +291,7 @@
       "type": "git",
       "url": "https://github.com/mathiasbynens/he.git"
     },
-    "packagePath": "node_modules/he",
+    "packagePath": "../../node_modules/he",
     "licenseFiles": [
       "LICENSE-MIT.txt"
     ]
@@ -304,7 +304,7 @@
       "type": "git",
       "url": "git+https://github.com/kornelski/http-cache-semantics.git"
     },
-    "packagePath": "node_modules/http-cache-semantics",
+    "packagePath": "../../node_modules/http-cache-semantics",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -317,7 +317,7 @@
       "type": "git",
       "url": "https://github.com/taoqf/node-fast-html-parser.git"
     },
-    "packagePath": "node_modules/node-html-parser",
+    "packagePath": "../../node_modules/node-html-parser",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -330,7 +330,7 @@
       "type": "git",
       "url": "https://github.com/fb55/nth-check"
     },
-    "packagePath": "node_modules/nth-check",
+    "packagePath": "../../node_modules/nth-check",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -343,7 +343,7 @@
       "type": "git",
       "url": "git://github.com/andrewrk/node-pend.git"
     },
-    "packagePath": "node_modules/pend",
+    "packagePath": "../../node_modules/pend",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -356,7 +356,7 @@
       "type": "git",
       "url": "git://github.com/pngjs/pngjs.git"
     },
-    "packagePath": "node_modules/pngjs",
+    "packagePath": "../../node_modules/pngjs",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -369,7 +369,7 @@
       "type": "git",
       "url": "git+https://github.com/nodejs/undici.git"
     },
-    "packagePath": "node_modules/undici",
+    "packagePath": "../../node_modules/undici",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -382,7 +382,7 @@
       "type": "git",
       "url": "git+https://github.com/nodejs/undici.git"
     },
-    "packagePath": "node_modules/undici-types",
+    "packagePath": "../../node_modules/undici-types",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -395,7 +395,7 @@
       "type": "git",
       "url": "https://github.com/thejoshwolfe/yauzl.git"
     },
-    "packagePath": "node_modules/yauzl",
+    "packagePath": "../../node_modules/yauzl",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -408,7 +408,7 @@
       "type": "git",
       "url": "https://github.com/thejoshwolfe/yazl.git"
     },
-    "packagePath": "node_modules/@xmcl/installer/node_modules/yazl",
+    "packagePath": "../../node_modules/@xmcl/installer/node_modules/yazl",
     "licenseFiles": [
       "LICENSE"
     ]
@@ -421,7 +421,7 @@
       "type": "git",
       "url": "git+https://github.com/thejoshwolfe/yazl.git"
     },
-    "packagePath": "node_modules/yazl",
+    "packagePath": "../../node_modules/yazl",
     "licenseFiles": [
       "LICENSE"
     ]

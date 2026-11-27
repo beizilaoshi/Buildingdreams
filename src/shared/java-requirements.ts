@@ -9,8 +9,12 @@ export interface JavaRequirement {
 export interface JavaRequirementInput {
     minecraft: string;
     metadataMajor?: number;
+    /** Official Mojang Java runtime component from the version profile. */
+    runtimeComponent?: string;
     /** Internal main-resolved explicit download family, never a renderer-supplied minimum. */
     exactMajor?: number;
+    /** Optional instance-scoped override; when present it replaces inferred compatibility bounds. */
+    customRange?: { minMajor?: number; maxMajor?: number };
     loader?: {
         kind: LoaderKind;
         version: string;
@@ -36,6 +40,15 @@ const compare = (a: string, b: string): number => {
     return 0;
 };
 export function javaRequirement(input: JavaRequirementInput): JavaRequirement {
+    if (input.customRange) {
+        const { minMajor, maxMajor } = input.customRange;
+        if ((minMajor !== undefined && (!Number.isInteger(minMajor) || minMajor < 1 || minMajor > 99)) ||
+            (maxMajor !== undefined && (!Number.isInteger(maxMajor) || maxMajor < 1 || maxMajor > 99)) ||
+            (minMajor === undefined && maxMajor === undefined) ||
+            (minMajor !== undefined && maxMajor !== undefined && minMajor > maxMajor))
+            throw new Error("无效自定义 Java 版本范围");
+        return { minMajor: minMajor ?? 1, maxMajor, preferredMajor: maxMajor ?? minMajor!, reason: `使用实例自定义 Java 范围 ${minMajor ?? 1}${maxMajor === undefined ? "+" : `–${maxMajor}`}` };
+    }
     const match = /^1\.(\d+)(?:\.(\d+))?$/.exec(input.minecraft);
     const minor = match ? Number(match[1]) : undefined;
     const patch = match ? Number(match[2] ?? 0) : 0;
@@ -133,22 +146,33 @@ export function javaArchitecture(arch: string): "x64" | "ia32" | "arm64" | "unkn
 export function javaInRange(r: JavaRequirement, j: JavaRuntime): boolean {
     return j.major >= r.minMajor && j.major <= (r.maxMajor ?? Infinity) && !(j.major === 8 && r.maxJava8Update !== undefined && javaVersionParts(j.version)[2] > r.maxJava8Update);
 }
-export function selectJava(r: JavaRequirement, candidates: JavaRuntime[], memoryMb: number, hostArch: string, manual?: JavaRuntime): JavaRuntime | undefined {
+export function selectJava(r: JavaRequirement, candidates: JavaRuntime[], memoryMb: number, hostArch: string, manual?: JavaRuntime, preferredRoots: string[] = []): JavaRuntime | undefined {
     const architecture = (j: JavaRuntime) => {
         const a = javaArchitecture(j.arch);
         return a !== "unknown" && (a === hostArch || hostArch === "x64" && a === "ia32") && !(a === "ia32" && memoryMb > 1400);
     };
     if (manual) {
+        // Manual selection takes precedence over discovery, but must still
+        // satisfy this game's Java and heap architecture requirements.
         if (!javaInRange(r, manual))
-            throw new Error(`手动 Java 不兼容：需要 Java ${r.minMajor || r.preferredMajor}${r.maxMajor ? `–${r.maxMajor}` : "+"}${r.maxJava8Update ? `（8u${r.maxJava8Update} 以下）` : ""}，已选择 ${manual.version}`);
+            throw new Error(`手动指定的 Java ${manual.major} 不兼容：此版本需要 Java ${r.minMajor}${r.maxMajor === undefined ? " 或更新版本" : `–${r.maxMajor}`}${r.maxJava8Update === undefined ? "" : `，Java 8 需不高于 8u${r.maxJava8Update}`}`);
         if (!architecture(manual))
-            throw new Error("手动 Java 架构不兼容，或 32 位 Java 不支持此内存设置");
+            throw new Error(`手动指定的 Java 架构 ${manual.arch} 与当前系统或内存配置不兼容，请选择 ${hostArch === "x64" ? "64 位 Java" : "兼容架构的 Java"}`);
         return manual;
     }
+    const rootRank = (path: string) => {
+        const value = path.replace(/\\/g, "/").toLowerCase();
+        const index = preferredRoots.findIndex(root => {
+            const base = root.replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+            return value === base || value.startsWith(base + "/");
+        });
+        return index < 0 ? preferredRoots.length : index;
+    };
     return candidates.filter(j => javaInRange(r, j) && architecture(j)).sort((a, b) => {
         const family = (j: JavaRuntime) => j.major === r.preferredMajor ? 0 : 1;
         const arch = (j: JavaRuntime) => javaArchitecture(j.arch) === hostArch ? 0 : 1;
-        const priority = arch(a) - arch(b) || family(a) - family(b) || Math.abs(a.major - r.preferredMajor) - Math.abs(b.major - r.preferredMajor);
+        const image = (j: JavaRuntime) => j.image === "jre" ? 0 : j.image === "jdk" ? 1 : 2;
+        const priority = arch(a) - arch(b) || family(a) - family(b) || rootRank(a.path) - rootRank(b.path) || image(a) - image(b) || Math.abs(a.major - r.preferredMajor) - Math.abs(b.major - r.preferredMajor);
         if (priority)
             return priority;
         const x = javaVersionParts(a.version), y = javaVersionParts(b.version);

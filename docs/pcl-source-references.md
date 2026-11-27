@@ -59,13 +59,19 @@ Actual production-service public Modrinth query on 2026-11-04: `钠`, Mod + Mine
 
 继续参考用户授权、只读 `PCL-2.12.7.3.zip` 中 `Plain Craft Launcher 2/Modules/Minecraft/ModLaunch.vb` 的 `McLaunchJava`（1149–1276 行），及同目录 `ModJava.vb` 的 `JavaSelect`、`GetJavaDownloadLoader` / `JavaFileList`：最低/最高版本交集、Forge 8u320 更新限制、NeoForge beta 顺序、OptiFine/LiteLoader 限制、64 位优先与用户手动选择、失败/取消时清理未完成环境。只选择性读取两个文本文件，没有修改原始归档。
 
-实现为独立 TypeScript 规则与公共解析器；不复制原 PCL 的下载服务、系统设置修改、品牌或凭据。相较源代码，显式手动选择不兼容时直接给出修正提示，不静默重置；空路径自动模式按实际版本重新选择，不把已选路径冻结到全局。26+ 与未知快照以实际 Mojang `javaVersion.majorVersion` 元数据为准，未知自定义版本明示未知而非虚构版本。Java 下载不代表余下 Task6 崩溃分析/生命周期功能完成。
+实现为独立 TypeScript 规则与公共解析器；不复制原 PCL 的下载服务、系统设置修改、品牌或凭据。手动路径会先探测可执行 Java，随后按 PCL 强制指定语义覆盖自动范围；未指定手动路径时，空路径自动模式按实际版本重新选择，不把已选路径冻结到全局。26+ 与未知快照以实际 Mojang `javaVersion.majorVersion` 元数据为准，未知自定义版本明示未知而非虚构版本。Java 下载不代表余下 Task6 崩溃分析/生命周期功能完成。
 
 官方供应方资料：
 - [Adoptium OpenAPI](https://api.adoptium.net/q/openapi) 与 [API Swagger UI](https://api.adoptium.net/q/swagger-ui/)：`/v3/assets/latest/{feature_version}/hotspot`，`architecture=x64&image_type=jre&os=windows&vendor=eclipse`；JRE 空列表才回退同系列 JDK。实际 2026-11-04 响应证实 Java16 需 JDK 回退；8/17/21/25 有 JRE。元数据中 ZIP package 与 MSI installer 独立，应用只使用 ZIP package。
 - [Eclipse Temurin 归档安装](https://adoptium.net/installation/archives/)：SHA-256 校验与便携归档、`java -version` 验证。运行环境 ZIP 的完整 legal/LICENSE 等文件原样保留。JVM 源码及发行许可归 Eclipse Adoptium/OpenJDK 与各自权利人；ZIP 不嵌入启动器 EXE。
 - 仅允许 `api.adoptium.net`、`github.com/adoptium/temurin<major>-binaries/releases/download/` 及 GitHub 官方 release CDN 重定向。请求 major/OS/arch/vendor/HotSpot/image/filename/size/hash 均校验；SHA-256 + size 通过后才安全解压，之后实际版本/架构/build/映像验证与原子发布。库存记录每个文件 SHA-256，复用前再检查，旧或未通过校验的目录不覆盖。
 - 下载在应用 userData/java 内；不用 MSI、脚本或系统范围 Java 安装，不修改 PATH/JAVA_HOME/注册表。Java7 与 Forge 要求的旧 8u320 自动源不提供时明确要求手动兼容环境，不把当前8误报兼容。
+
+Java 自动发现补充（2026-11-27）：Windows 有界扫描覆盖实例传入根下的 `java` / `jre` / `jdk` / `runtime`，以及 `.minecraft/runtime`、HMCL、ATLauncher、Modrinth App、Prism Launcher、CurseForge、FTB App、用户 `.jdks` / `.sdkman/candidates/java`、Minecraft Launcher、Microsoft Store Minecraft 与 Program Files 常见厂商目录；另保留注册表、PATH、JAVA_HOME。目录遍历最多64个初始根、1024个目录、每目录96项、深度4，并拒绝符号链接；发现候选和 Java 子进程验证数量均有限制。自动选择先过滤版本兼容范围，再依次优先主机架构、目标 Java 主版本、实例/已知根顺序、JRE（通过同级 `javac[.exe]` 是否存在作保守推断），最后选较高更新版本；显式手动路径仍直接校验且不会被改选。该工作按本文件前述 PCL 来源规则独立实现；没有做整盘扫描，也不宣称已复现 PCL 所有候选来源、注册表与打分细节。Temurin 自动下载仍仅 Windows x64。
+
+Java 下载/补全对齐补充（2026-11-27）：启动时先复用满足游戏/加载器版本范围、处理器架构和内存限制的已发现 Java；只有没有兼容候选时才自动获取。若 Mojang 版本配置有 `javaVersion.component`，先按固定官方 Java runtime index 选择 Windows x64 清单，校验组件 manifest 与逐文件 SHA-1/大小，通过 staged 文件夹和实际 `java.exe` 探测后以不可变 generation 原子发布；再次补全时只复用经当前清单校验的旧文件，缺失或损坏文件重新下载。组件不存在时才转 Temurin 历史/最新 GA ZIP 路径；清单异常、下载失败、取消和安全校验失败均停止，不以未校验包静默回退。Windows x64 八个当前官方组件样本已检查为无链接项。任务标题、设置页说明按 Mojang/Temurin 两类来源呈现。该组件链路尚未做真实下载、破坏文件后的实机修复及游戏启动验收；不可变旧 generation 目前不自动清理。PCL 原始 ZIP 当前不可用，选择优先级细节以本文件记录的既有选择性源代码阅读为依据，不推断未留存的源行。
+
+版本设置对齐补充：实例目录根现在也进入有界 Java 扫描并获得自动选择优先级，可发现版本目录附近的便携 Java；此外新增每实例可选 Java 主版本上下限，填写后覆盖自动推导范围，留空则继续组合 Minecraft、加载器、OptiFine/LiteLoader 和官方元数据约束。手动 Java 路径独立优先，PCL 式强制选择不受自动范围限制。新增“仅使用当前版本目录 Java”模式，只在 `versions/<versionId>` 有界扫描，缺失时明确报错且不自动下载；自动和手动两种模式保持不变。范围按 Java 主版本配置，不支持 PCL 任意完整小版本区间。
 
 开发期间的独立实机检查（非 fixture，原始运行记录不随公开源码分发）覆盖官方17.0.21+9、43860024 bytes、SHA-256 `fe4656bd78fb09812dc38c49da777f79cc33e7ee435a254be82f9e7f40d9d117` 下载→安全解压→实际执行检查→原子发布→重启库存/生产解析器复用；`javaw.exe` 输入使用同安装目录 `java.exe` 并返回实际路径。另一次开发期间检查使用独立注册表、独立 gameDir、已有1.21.1实际资源的自动Java21选择和游戏初始化标记检查，只停止这次 LaunchService 返回的PID；不代表完整游戏游玩。UI fixture 测试对 fixture bytes 使用明确的测试 inspector，绝不执行 fixture 字节，与这些实机证据分开。
 

@@ -445,6 +445,31 @@ describe("loader adapters", () => {
       }
     },
   );
+  it("switches an existing loader by staging a new resource root and preserves the prior root", async () => {
+    const f = await archiveFixture();
+    const before = await f.instances.get("original");
+    const modded = await f.instances.register(
+      { ...before, versionId: "fabric-old", loader: { kind: "fabric", version: "0.16.0" } },
+      before,
+    );
+    await mkdir(join(modded.gameDir, "mods"), { recursive: true });
+    await writeFile(join(modded.gameDir, "mods", "keep.jar"), "user-mod");
+    const priorGameDir = modded.gameDir;
+    await mkdir(join(modded.resourceDir, "versions", "fabric-old"), { recursive: true });
+    await writeFile(join(modded.resourceDir, "versions", "fabric-old", "fabric-old.json"), JSON.stringify({
+      id: "fabric-old", inheritsFrom: "1.21.1", mainClass: "Main", libraries: [{ name: "net.fabricmc:fabric-loader:0.16.0" }],
+    }));
+    const switched = await f.tasks.wait<Awaited<ReturnType<InstanceService["get"]>>>(
+      f.loaders.install("original", "neoforge", "21.1.10"),
+    );
+    expect(switched.loader).toEqual({ kind: "neoforge", version: "21.1.10" });
+    expect(switched.resourceDir).not.toBe(modded.resourceDir);
+    expect(switched.gameDir).toBe(priorGameDir);
+    expect(switched.gameDirMode).toBe("isolated");
+    expect(await readFile(join(priorGameDir, "mods", "keep.jar"), "utf8")).toBe("user-mod");
+    expect(await readFile(join(modded.resourceDir, "versions", "fabric-old", "fabric-old.json"), "utf8")).toContain("fabric-loader");
+    expect((await f.instances.get("original")).resourceDir).toBe(switched.resourceDir);
+  });
   it("keeps the original instance and cleans staging after a Forge processor fails", async () => {
     const f = await fixture(true);
     const before = await f.instances.get("original");

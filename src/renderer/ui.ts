@@ -14,6 +14,7 @@ export const pendingAppearanceSettings = new Map<keyof Settings, { value: unknow
 function acceptSettings(snapshot: Settings): Settings {
   state.settings = { ...snapshot, ...Object.fromEntries([...pendingAppearanceSettings].map(([key, entry]) => [key, entry.value])) };
   applySettings(state.settings);
+  window.dispatchEvent(new CustomEvent('launcher-settings',{detail:state.settings}));
   return state.settings;
 }
 let settingsRequest = 0;
@@ -22,7 +23,7 @@ export const api = async <K extends keyof CommandMap>(
   command: K,
   payload: CommandMap[K]["payload"],
 ) => {
-  const isSettings = command === "settings.read" || command === "settings.patch" || command === "settings.reset";
+  const isSettings = command === "settings.read" || command === "settings.patch" || command === "settings.reset" || command === "settings.importApply";
   const request = isSettings ? ++settingsRequest : 0;
   const result = await window.launcher.invoke(command, payload);
   if (isSettings) {
@@ -46,7 +47,7 @@ function readFavorites(): string[] {
   }
 }
 type AccountKind = AccountSummary['kind'];
-function readAccountSelection(): { kind?: AccountKind; local?: string; microsoft?: string } {
+function readAccountSelection(): { kind?: AccountKind; local?: string; microsoft?: string; external?: string } {
   try {
     const value = JSON.parse(localStorage.getItem('accountSelection') ?? '{}');
     return value && typeof value === 'object' ? value : {};
@@ -60,7 +61,7 @@ export const state = {
   tasks: [] as TaskSnapshot[],
   instanceId: localStorage.getItem("instance") ?? "",
   accountId: localStorage.getItem("account") ?? "",
-  accountKind: (accountSelection.kind === 'microsoft' || accountSelection.kind === 'local' ? accountSelection.kind : undefined) as AccountKind | undefined,
+  accountKind: (accountSelection.kind === 'microsoft' || accountSelection.kind === 'local' || accountSelection.kind === 'external' ? accountSelection.kind : undefined) as AccountKind | undefined,
   page: "home",
   favorites: new Set<string>(readFavorites()),
 };
@@ -95,13 +96,23 @@ export function account() {
   if (identity) accountSelection[kind] = identity.id;
   return identity;
 }
+let favoriteMigration:Promise<void>|undefined;
 export async function refresh(includeTasks = true) {
+  favoriteMigration ??= api('instances.mergeFavorites', readFavorites()).catch(error=>{favoriteMigration=undefined;throw error;});
+  await favoriteMigration;
   const [instances, accounts, tasks] = await Promise.all([
     api("instances.list", undefined),
-    api("accounts.list", undefined),
+    api("accounts.list", undefined).catch(error => {
+      // An unreadable credential vault must not keep the entire launcher hidden.
+      state.accounts = [];
+      notify(error, { kind: "warning", title: "账号暂不可用" });
+      return [] as AccountSummary[];
+    }),
     includeTasks ? api("tasks.list", undefined) : Promise.resolve(undefined),
   ]);
   state.instances = instances; state.accounts = accounts;
+  state.favorites = new Set(instances.filter(x=>x.favorite).map(x=>x.id));
+  localStorage.removeItem('favorites');
   account(); persistAccountSelection();
   if (tasks) state.tasks = tasks;
 }
@@ -165,11 +176,10 @@ export function instancePicker() {
   };
   return node;
 }
-export function persistFavorite(id: string) {
-  state.favorites.has(id)
-    ? state.favorites.delete(id)
-    : state.favorites.add(id);
-  localStorage.setItem("favorites", JSON.stringify([...state.favorites]));
+export async function persistFavorite(id: string) {
+  const item=await api('instances.metadata',{id,metadata:{favorite:!state.favorites.has(id)}});
+  state.instances=state.instances.map(x=>x.id===id?item:x);
+  item.favorite?state.favorites.add(id):state.favorites.delete(id);
 }
 
 let accountFocusRequested = false;

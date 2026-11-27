@@ -445,3 +445,51 @@ test("local insert and remove publish memory changes only after vault commit", a
   expect(await s.list()).toEqual([account]);
   expect(await service().list()).toEqual([account]);
 });
+test('local custom skin persists across reload and reset without changing launch identity',async()=>{
+ const s=service(), a=await s.addLocal('Alex');
+ const png='data:image/png;base64,'+PNG.sync.write(new PNG({width:64,height:64})).toString('base64');
+ expect(await s.setLocalSkin({id:a.id,png,model:'slim'})).toMatchObject({source:'custom',model:'slim'});
+ expect(await service().appearance(a.id)).toMatchObject({source:'custom',model:'slim'});
+ expect((await s.getLaunchIdentity(a.id)).uuid).toBe(a.uuid);
+ await s.resetLocalSkin(a.id);
+ expect(await s.appearance(a.id)).toMatchObject({source:'default'});
+});
+test('official skin operations reject local accounts before making any request',async()=>{
+ const s=service(),a=await s.addLocal('Steve');
+ await expect(s.skinProfile(a.id)).rejects.toThrow('正版');
+ expect(requests).toHaveLength(0);
+});
+test('official upload sends validated PNG multipart to fixed service and never returns bearer',async()=>{
+ const s=service();replies.push(device,...success());const login=await s.beginMicrosoftLogin();now+=5000;await s.pollMicrosoftLogin(login.loginId);
+ const id='microsoft:0123456789abcdef0123456789abcdef';
+ replies.push({id:id.slice(10),skins:[{state:'ACTIVE',variant:'SLIM',url:'https://textures.minecraft.net/texture/'+'a'.repeat(64)}],capes:[]});
+ const result=await s.uploadSkin({id,model:'slim',png:'data:image/png;base64,'+PNG.sync.write(new PNG({width:64,height:64})).toString('base64')});
+ expect(result).toEqual({accountId:id,model:'slim',capes:[]});
+ const request=requests.at(-1);expect(request.url).toBe('https://api.minecraftservices.com/minecraft/profile/skins');expect(request.init.body.get('variant')).toBe('slim');expect(request.init.headers.Authorization).toBe('Bearer SECRET_GAME');expect(JSON.stringify(result)).not.toContain('SECRET');
+});
+test('official profile completing after removal cannot resurrect account',async()=>{
+ const s=service();replies.push(device,...success());const login=await s.beginMicrosoftLogin();now+=5000;await s.pollMicrosoftLogin(login.loginId);
+ const id='microsoft:0123456789abcdef0123456789abcdef';
+ let resolve!: (x:Response)=>void;const pendingResponse=new Promise<Response>(r=>resolve=r);
+ // Response body may remain pending while account switching/removal proceeds.
+ let finish!:()=>void;const stream=new ReadableStream({start(controller){finish=()=>{controller.enqueue(new TextEncoder().encode(JSON.stringify({id:id.slice(10),skins:[],capes:[]})));controller.close();};}});
+ replies.push(new Response(stream));const pending=s.skinProfile(id);await new Promise(r=>setTimeout(r,5));await s.remove(id);finish();await expect(pending).rejects.toThrow('账户已更改');expect(await s.list()).toEqual([]);
+});
+test('unowned cape is rejected without mutation request',async()=>{
+ const s=service();replies.push(device,...success());const login=await s.beginMicrosoftLogin();now+=5000;await s.pollMicrosoftLogin(login.loginId);
+ const id='microsoft:0123456789abcdef0123456789abcdef';replies.push({id:id.slice(10),skins:[],capes:[]});const before=requests.length;
+ await expect(s.changeCape({id,capeId:'a'.repeat(32)})).rejects.toThrow('没有');expect(requests.slice(before)).toHaveLength(1);expect(requests.at(-1).init.method).toBe('GET');
+});
+test.each(['a'.repeat(32),null])('cape change rejects mismatched profile before mutation (%s)',async(capeId)=>{
+ const s=service();replies.push(device,...success());const login=await s.beginMicrosoftLogin();now+=5000;await s.pollMicrosoftLogin(login.loginId);
+ const id='microsoft:0123456789abcdef0123456789abcdef';
+ const profile={id:'f'.repeat(32),skins:[],capes:[{id:'a'.repeat(32),alias:'Cape',state:'ACTIVE'}]};
+ replies.push(profile,new Response(null,{status:204}),profile);const before=requests.length;
+ await expect(s.changeCape({id,capeId})).rejects.toThrow('正版皮肤资料无效');
+ expect(requests.slice(before).map(request=>request.init.method)).toEqual(['GET']);
+});
+test('official profile body is cancelled as soon as response limit is exceeded',async()=>{
+ const s=service();replies.push(device,...success());const login=await s.beginMicrosoftLogin();now+=5000;await s.pollMicrosoftLogin(login.loginId);
+ let chunks=0,cancelled=false;replies.push(new Response(new ReadableStream({pull(c){chunks++;c.enqueue(new Uint8Array(40000));if(chunks===10)c.close();},cancel(){cancelled=true;}})));
+ await expect(s.skinProfile('microsoft:0123456789abcdef0123456789abcdef')).rejects.toThrow('请求失败');expect(chunks).toBeLessThan(5);expect(cancelled).toBe(true);
+});

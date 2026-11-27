@@ -13,6 +13,12 @@ export function buildLaunchOptions(item: Instance, version: ResolvedVersion, jav
     if ((p.gc === 'zgc' || item.javaArgs.includes('-XX:+UseZGC')) && (java.major < 17 || !['amd64', 'x86_64', 'aarch64', 'arm64'].includes(java.arch)))
         throw Error('ZGC 需要 64 位 Java 17 或更新版本');
     const options: LaunchOption = { javaPath: java.path, version, gamePath: item.gameDir, resourcePath: item.resourceDir, maxMemory: item.memoryMb, extraJVMArgs: [...item.javaArgs, ...(p.gc === 'g1' ? ['-XX:+UseG1GC'] : p.gc === 'zgc' ? ['-XX:+UseZGC'] : [])], extraMCArgs: [...p.gameArgs], resolution: { width: p.width, height: p.height, fullscreen: p.fullscreen }, gameProfile: { name: account.name, id: account.uuid }, accessToken: account.accessToken, launcherName: '筑梦启动器', launcherBrand: '筑梦启动器', extraExecOption: { shell: false, windowsHide: true } };
+    if (p.language !== 'system') options.extraMCArgs!.push('--lang', p.language);
+    if(account.extraJvmArgs) {
+        if(account.extraJvmArgs.length>4||account.extraJvmArgs.some(a=>typeof a!=='string'||a.length>16384||/[\0\r\n]/.test(a)||!/^-(?:javaagent:|Dauthlibinjector\.)/.test(a)))throw Error('外置认证启动参数无效');
+        options.extraJVMArgs!.push(...account.extraJvmArgs);
+    }
+    if(account.userType)options.userType=account.userType;
     if (p.versionInfo)
         options.versionType = p.versionInfo;
     // XMCL suppresses fullscreen when metadata already emits width; append it explicitly.

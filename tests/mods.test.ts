@@ -25,6 +25,13 @@ import { TaskService } from "../src/main/services/tasks";
 import type { ContentVersion } from "../src/shared/content";
 import { CommandRouter } from "../src/main/ipc";
 import { registerModCommands } from "../src/main/mod-router";
+import { HashModIdentifier } from '../src/main/services/mod-identification';
+it('does not initialize identification networking during construction or local listing',async()=>{
+ const f=await fixture();
+ const restricted=vi.fn(()=>{throw new Error('unexpected online initialization');});
+ const mods=new ModService(f.instances,f.tasks,{restricted} as unknown as NetworkService,f.api);
+ expect(await mods.list('i')).toEqual([]);expect(restricted).not.toHaveBeenCalled();
+});
 const roots: string[] = [],
   servers: Server[] = [];
 afterEach(async () => {
@@ -139,6 +146,67 @@ async function fixture() {
     },
   };
 }
+
+it('identifies exact bytes in .jar.old, keeps disabled state through update and enable',async()=>{
+  const f=await fixture(); const v=f.version('old','p');
+  await mkdir(join(f.root,'mods'));
+  await writeFile(join(f.root,'mods','manual.jar.old'),f.bytes);
+  const lookup=vi.fn(async()=>v);
+  const mods=new ModService(f.instances,f.tasks,f.network,f.api,{lookup} as unknown as HashModIdentifier);
+  const before=(await mods.list('i'))[0]; expect(before.enabled).toBe(false);
+  expect((await mods.identify('i',[{fileName:before.fileName,sha1:before.sha1}])).results[0].status).toBe('identified');
+  expect((await mods.list('i'))[0].projectId).toBe('p');
+  expect((await mods.identify('i',[{fileName:before.fileName,sha1:before.sha1}])).results[0].status).toBe('trusted');
+  expect(lookup).toHaveBeenCalledTimes(1);
+  const newer=f.version('new','p');
+  const report=await mods.batch('i','update',[{fileName:before.fileName,sha1:before.sha1,versionId:newer.id}],{signal:new AbortController().signal,report:()=>{}});
+  expect(report[0].status).toBe('completed');
+  expect((await mods.list('i'))[0].fileName).toBe('new.jar.old');
+  await mods.toggle('i','new.jar.old',false);
+  expect((await mods.list('i'))[0].fileName).toBe('new.jar.old');
+  await mods.toggle('i','new.jar.old',true);
+  expect((await mods.list('i'))[0].fileName).toBe('new.jar');
+});
+it('old suffix enable conflicts preserve all original files, including a disabled alias',async()=>{
+  const f=await fixture();await mkdir(join(f.root,'mods'));
+  await writeFile(join(f.root,'mods','a.jar.old'),'one');
+  await writeFile(join(f.root,'mods','a.jar.disabled'),'two');
+  const item=(await f.mods.list('i')).find(m=>m.fileName==='a.jar.old')!;
+  expect((await f.mods.batch('i','enable',[{fileName:item.fileName,sha1:item.sha1}]))[0].status).toBe('failed');
+  expect(await readFile(join(f.root,'mods','a.jar.old'),'utf8')).toBe('one');
+});
+it('refuses identification publication when bytes change during the network lookup',async()=>{
+  const f=await fixture(); const v=f.version('old','p');
+  await mkdir(join(f.root,'mods')); await writeFile(join(f.root,'mods','manual.jar'),f.bytes);
+  const lookup=async()=>{await writeFile(join(f.root,'mods','manual.jar'),'external mutation');return v;};
+  const mods=new ModService(f.instances,f.tasks,f.network,f.api,{lookup} as unknown as HashModIdentifier);
+  const before=(await mods.list('i'))[0];
+  expect((await mods.identify('i',[{fileName:before.fileName,sha1:before.sha1}])).results[0].status).toBe('failed');
+  expect(await readFile(join(f.root,'mods','manual.jar'),'utf8')).toBe('external mutation');
+  expect((await mods.list('i'))[0].projectId).toBeUndefined();
+});
+it('reports unmatched, failed and cancelled files independently and rejects oversized selections',async()=>{
+  const f=await fixture();await mkdir(join(f.root,'mods'));
+  for(const name of ['a.jar','b.jar','c.jar']) await writeFile(join(f.root,'mods',name),f.bytes);
+  let calls=0;const controller=new AbortController();
+  const lookup=async()=>{calls++;if(calls===1)return null;controller.abort();throw new Error('offline');};
+  const mods=new ModService(f.instances,f.tasks,f.network,f.api,{lookup} as unknown as HashModIdentifier);
+  const items=(await mods.list('i')).map(m=>({fileName:m.fileName,sha1:m.sha1}));
+  const result=await mods.identify('i',items,controller.signal);
+  expect(result.results.map(r=>r.status)).toEqual(['unmatched','cancelled','cancelled']);
+  expect(calls).toBe(2);expect(result.scope).toContain('CurseForge');
+  await expect(mods.identify('i',Array.from({length:201},()=>items[0]))).rejects.toThrow();
+  expect((await mods.list('i')).every(m=>!m.projectId)).toBe(true);
+});
+it('validates the explicit identification command strictly before querying any network',async()=>{
+ const f=await fixture(),router=new CommandRouter();registerModCommands(router,f);
+ for(const payload of [{id:'i',items:[]},{id:'i',items:[{fileName:'a.jar',sha1:'bad'}]},{id:'i',items:[{fileName:'a.jar.old.disabled',sha1:'a'.repeat(40)}]},{id:'i',items:[{fileName:'a.jar',sha1:'a'.repeat(40),versionId:'extra'}]},{id:'i',items:[{fileName:'a.jar',sha1:'a'.repeat(40)}],extra:true}]) await expect(router.invoke('mods.identify',payload)).rejects.toThrow();
+ expect(f.requests).toEqual([]);
+ await mkdir(join(f.root,'mods'));await writeFile(join(f.root,'mods','a.jar'),f.bytes);
+ const sha1=createHash('sha1').update(f.bytes).digest('hex');
+ await writeFile(join(f.root,'mods','.zhumeng-mods.json'),JSON.stringify({'a.jar':{sha1,projectId:'p',versionId:'v'}}));
+ expect(await router.invoke('mods.identify',{id:'i',items:[{fileName:'a.jar',sha1}]})).toMatchObject({results:[{status:'trusted'}]});
+});
 it("sends Modrinth game/loader/type facets and version filters", async () => {
   const f = await fixture();
   f.version("a");
@@ -339,9 +407,22 @@ it("updates atomically, preserves disabled state, and never leaves old and new j
   f.corrupt();
   await expect(f.tasks.wait(f.mods.update("i", "new"))).rejects.toThrow("校验");
   expect((await f.mods.list("i")).map((m) => m.fileName)).toEqual([
-    "old.jar.disabled",
+    "old.jar.zhumeng",
   ]);
   expect(await readdir(f.root)).toEqual(["mods"]);
+});
+it("disables a mod with the Zhumeng suffix and restores the original filename when enabled", async () => {
+  const f = await fixture();
+  await mkdir(join(f.root, "mods"));
+  await writeFile(join(f.root, "mods", "visual.jar"), f.bytes);
+
+  await f.mods.toggle("i", "visual.jar", false);
+  expect((await readdir(join(f.root, "mods"))).filter(name => name.endsWith(".jar.zhumeng"))).toEqual(["visual.jar.zhumeng"]);
+  expect(await f.mods.list("i")).toMatchObject([{ fileName: "visual.jar.zhumeng", enabled: false }]);
+
+  await f.mods.toggle("i", "visual.jar.zhumeng", true);
+  expect((await readdir(join(f.root, "mods"))).filter(name => /\.jar(?:\.zhumeng)?$/i.test(name))).toEqual(["visual.jar"]);
+  expect(await f.mods.list("i")).toMatchObject([{ fileName: "visual.jar", enabled: true }]);
 });
 it("successful update replaces original jar and keeps metadata", async () => {
   const f = await fixture();
@@ -353,7 +434,7 @@ it("successful update replaces original jar and keeps metadata", async () => {
   const mods = await f.mods.list("i");
   expect(mods).toHaveLength(1);
   expect(mods[0]).toMatchObject({
-    fileName: "new.jar.disabled",
+    fileName: "new.jar.zhumeng",
     versionId: "new",
     enabled: false,
   });
@@ -366,7 +447,7 @@ it("imports, toggles and removes only contained local jars", async () => {
   await f.mods.toggle("i", "local.jar", false);
   expect(await readFile(local)).toEqual(f.bytes);
   await expect(f.mods.remove("i", "../local.jar")).rejects.toThrow();
-  await f.mods.remove("i", "local.jar.disabled");
+  await f.mods.remove("i", "local.jar.zhumeng");
   expect(await f.mods.list("i")).toEqual([]);
   expect(await readFile(local)).toEqual(f.bytes);
 });
@@ -409,7 +490,7 @@ it("serializes concurrent installs and local mutations per instance", async () =
     f.mods.remove("i", "b.jar"),
   ]);
   expect((await f.mods.list("i")).map((m) => m.fileName)).toEqual([
-    "a.jar.disabled",
+    "a.jar.zhumeng",
   ]);
 });
 it("rejects conflicts declared by already installed mods and pinned dependency replacement", async () => {
@@ -486,7 +567,7 @@ it("rejects an enabled root requiring a disabled dependency and preserves existi
     "必需依赖已禁用",
   );
   expect((await f.mods.list("i")).map((m) => m.fileName)).toEqual([
-    "d.jar.disabled",
+    "d.jar.zhumeng",
   ]);
   expect(await readFile(join(f.root, "mods", ".zhumeng-mods.json"))).toEqual(
     sources,
@@ -536,7 +617,7 @@ it("batch uses reviewed hashes, preserves stale bytes and reports independent re
   await writeFile(join(f.root, "mods", "b.jar"), "external");
   const results = await f.mods.batch("i", "disable", items);
   expect(results.map(x => x.status)).toEqual(["completed", "failed"]);
-  expect(await readFile(join(f.root, "mods", "a.jar.disabled"), "utf8")).toBe("alpha");
+  expect(await readFile(join(f.root, "mods", "a.jar.zhumeng"), "utf8")).toBe("alpha");
   expect(await readFile(join(f.root, "mods", "b.jar"), "utf8")).toBe("external");
   await expect(f.mods.batch("i", "remove", [items[0], {...items[0], fileName:"A.jar"}])).rejects.toThrow();
 });

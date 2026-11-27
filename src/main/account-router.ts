@@ -1,3 +1,4 @@
+import type { ExternalAccountService } from "./services/external-accounts";
 import type { AccountService } from "./services/accounts";
 import { CommandRouter, noPayload } from "./ipc";
 function text(value: unknown): string {
@@ -17,10 +18,11 @@ export function registerAccountCommands(
     const { clipboard } = await import("electron");
     await clipboard.writeText(code);
   },
+  external?: ExternalAccountService,
 ): void {
   router.register("accounts.choosePcl", noPayload, () => accounts.choosePcl());
-  router.register("accounts.list", noPayload, () => accounts.list());
-  router.register("accounts.appearance", text, (id) => accounts.appearance(id));
+  router.register("accounts.list", noPayload, async () => [...await accounts.list(), ...await external?.list() ?? []]);
+  router.register("accounts.appearance", text, (id) => external?.owns(id) ? external.appearance(id) : accounts.appearance(id));
   router.register("accounts.addLocal", text, (name) => accounts.addLocal(name));
   router.register(
     "accounts.renameLocal",
@@ -55,5 +57,5 @@ export function registerAccountCommands(
   router.register("accounts.cancelMicrosoftLogin", text, (id) =>
     accounts.cancelMicrosoftLogin(id),
   );
-  router.register("accounts.remove", text, (id) => accounts.remove(id));
+  router.register("accounts.remove", text, (id) => external?.owns(id) ? external.remove(id) : accounts.remove(id));
 }

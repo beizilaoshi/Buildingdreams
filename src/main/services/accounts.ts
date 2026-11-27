@@ -14,7 +14,10 @@ export interface TokenProtector {
   encryptString(value: string): Buffer;
   decryptString(value: Buffer): string;
 }
+import { skinData, skinUri } from './skin';
+import type { SkinSelection, SkinProfile } from '../../shared/skin';
 interface StoredAccount {
+  customSkin?: SkinSelection;
   summary: AccountSummary;
   provider?: "pcl";
   accessToken?: string;
@@ -130,14 +133,87 @@ export class AccountService {
         uuid: value.summary.uuid,
         kind: value.summary.kind,
         texture: value.texture,
+        customSkin: value.customSkin,
       };
     });
+    if(a.kind==='local' && a.customSkin) return {accountId:id,source:'custom' as const,...a.customSkin};
+      if(a.kind==='external')throw Error('请使用外置认证账户服务');
     return new AppearanceService(this.fetcher).get(
       a.id,
       a.uuid,
       a.kind,
       a.texture,
     );
+  }
+  setLocalSkin(value: SkinSelection & {id:string}) {
+    const png=skinUri(skinData(value.png));
+    if(!['classic','slim'].includes(value.model))throw Error('无效皮肤模型');
+    return this.serialized(async()=>{
+      await this.load(); const a=this.accounts.find(a=>a.summary.id===value.id);
+      if(!a||a.summary.kind!=='local')throw Error('仅本地账号可设置启动器头像');
+      await this.save(this.accounts.map(item=>item===a?{...a,customSkin:{png,model:value.model}}:item));
+      return {accountId:value.id,source:'custom' as const,png,model:value.model};
+    });
+  }
+  resetLocalSkin(id:string):Promise<void> {return this.serialized(async()=>{
+    await this.load();const a=this.accounts.find(a=>a.summary.id===id);
+    if(!a||a.summary.kind!=='local')throw Error('仅本地账号可重置启动器头像');
+    await this.save(this.accounts.map(item=>{if(item!==a)return item;const next={...a};delete next.customSkin;return next;}));
+  });}
+  private async skinIdentity(id:string) {
+    const a=await this.serialized(async()=>{await this.load();return this.accounts.find(a=>a.summary.id===id);});
+    if(!a||a.summary.kind!=='microsoft')throw Error('需要正版 Microsoft 账号');
+    const identity=await this.getIdentity(id);
+    const snapshot=await this.serialized(async()=>this.accounts.find(a=>a.summary.id===id));
+    if(!snapshot||snapshot.accessToken!==identity.accessToken)throw Error('账户已更改');
+    return {identity,snapshot};
+  }
+  private async skinRequest(token:string,path:string,method='GET',body?:BodyInit):Promise<any> {
+    try {
+      const response=await this.fetcher('https://api.minecraftservices.com/minecraft/profile'+path,{
+        method,body,redirect:'error',signal:AbortSignal.timeout(30000),
+        headers:{Authorization:'Bearer '+token,...(typeof body==='string'?{'Content-Type':'application/json'}:{})}
+      });
+      if(!response.ok||response.redirected)throw Error();
+      if(method==='DELETE'||response.status===204)return undefined;
+      if(!response.body)throw Error();
+      const reader=response.body.getReader(),chunks:Buffer[]=[];let size=0;
+      try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>65536)throw Error();chunks.push(Buffer.from(value));}}
+      finally{await reader.cancel().catch(()=>{});}
+      const text=Buffer.concat(chunks).toString('utf8');return text?JSON.parse(text):undefined;
+    }catch{throw Error('正版皮肤服务请求失败，请重试或重新登录');}
+  }
+  private async skinCommit(id:string,snapshot:StoredAccount,profile:any):Promise<SkinProfile>{
+    if(profile?.id?.toLowerCase()!==snapshot.summary.uuid.toLowerCase()||!Array.isArray(profile.skins)||!Array.isArray(profile.capes)||profile.capes.length>256)throw Error('正版皮肤资料无效');
+    const result:SkinProfile={accountId:id,model:profile.skins.find((x:any)=>x.state==='ACTIVE')?.variant==='SLIM'?'slim':'classic',capes:profile.capes.map((c:any)=>{
+      if(typeof c.id!=='string'||! /^[a-f0-9-]{32,36}$/i.test(c.id)||typeof c.alias!=='string'||c.alias.length>100)throw Error('披风资料无效');
+      return {id:c.id,name:c.alias,active:c.state==='ACTIVE'};
+    })};
+    await this.serialized(async()=>{
+      if(!this.accounts.includes(snapshot))throw Error('账户已更改');
+      await this.save(this.accounts.map(a=>a===snapshot?{...a,texture:activeTexture(profile)}:a));
+    });return result;
+  }
+  async skinProfile(id:string):Promise<SkinProfile>{
+    const {identity,snapshot}=await this.skinIdentity(id);
+    return this.skinCommit(id,snapshot,await this.skinRequest(identity.accessToken,''));
+  }
+  async refreshSkin(id:string){await this.skinProfile(id);return this.appearance(id);}
+  async uploadSkin(value:SkinSelection & {id:string}):Promise<SkinProfile>{
+    const png=skinData(value.png);if(!['classic','slim'].includes(value.model))throw Error('无效皮肤模型');
+    const {identity,snapshot}=await this.skinIdentity(value.id);
+    const form=new FormData();form.set('variant',value.model);form.set('file',new Blob([new Uint8Array(png)],{type:'image/png'}),'skin.png');
+    const profile=await this.skinRequest(identity.accessToken,'/skins','POST',form);
+    return this.skinCommit(value.id,snapshot,profile);
+  }
+  async changeCape(value:{id:string;capeId:string|null}):Promise<SkinProfile>{
+    const {identity,snapshot}=await this.skinIdentity(value.id);
+    const profile=await this.skinRequest(identity.accessToken,'');
+    if(typeof profile?.id!=='string'||profile.id.toLowerCase()!==snapshot.summary.uuid.toLowerCase())throw Error('正版皮肤资料无效');
+    if(value.capeId!==null&&!profile?.capes?.some((c:any)=>c.id===value.capeId))throw Error('此账号没有该披风');
+    await this.serialized(async()=>{if(!this.accounts.includes(snapshot))throw Error('账户已更改');});
+    await this.skinRequest(identity.accessToken,'/capes/active',value.capeId===null?'DELETE':'PUT',value.capeId===null?undefined:JSON.stringify({capeId:value.capeId}));
+    return this.skinCommit(value.id,snapshot,await this.skinRequest(identity.accessToken,''));
   }
   addLocal(name: string): Promise<AccountSummary> {
     return this.serialized(async () => {

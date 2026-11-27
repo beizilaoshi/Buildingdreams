@@ -8,3 +8,6 @@
 .account-error:empty {
   display: none;
 }
+.skin-workbench { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; max-width: 600px; }
+.skin-workbench > p, .skin-workbench > .field, .skin-workbench > div { flex-basis: 100%; }
+.skin-workbench > img { background: repeating-conic-gradient(#8893a340 0% 25%, transparent 0% 50%) 0 0 / 16px 16px; }

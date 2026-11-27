@@ -22,8 +22,9 @@ function object(v: unknown, keys: string[]): Record<string, unknown> {
 }
 function options(v: unknown): PackInstallOptions {
   if (v === undefined) return {};
-  const d = object(v, ["suppliedFiles", "includeOptional", "curseForgeKey"]);
+  const d = object(v, ["suppliedFiles", "includeOptional", "curseForgeKey", "selectedVersionId"]);
   const result: PackInstallOptions = {};
+  if (d.selectedVersionId !== undefined) result.selectedVersionId = text(d.selectedVersionId);
   if (d.includeOptional !== undefined) {
     if (typeof d.includeOptional !== "boolean")
       throw new Error("无效可选文件参数");

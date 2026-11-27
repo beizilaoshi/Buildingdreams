@@ -1,3 +1,5 @@
+import { installerFilesCard, fabricExtrasCard } from '../components/installer-files';
+import { installComponentsCard } from "../components/install-components";
 import { installTarget } from "../components/install-target";
 import { versionBrowser } from "../components/version-browser";
 import { choice } from "../components/choice";
@@ -188,7 +190,7 @@ export function download() {
   if (version.value) { browser.node.hidden = true; detailTitle.textContent = `安装 ${version.value}`; void reloadLoaders(); }
   const tasks = panel("下载任务");
   tasks.append(taskCards());
-  node.append(browser.node, form, tasks);
+  node.append(browser.node, form, installComponentsCard(), installerFilesCard(), fabricExtrasCard(), tasks);
   void api("install.catalog", undefined)
     .then((catalog) => browser.setCatalog(catalog))
     .catch((error) => {

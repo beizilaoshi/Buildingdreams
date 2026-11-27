@@ -1,3 +1,4 @@
+import { homeContentSection } from '../components/home-content';
 import { homeAccount, addHomeAccount } from "../components/home-account";
 import { launchControls } from "../components/launch-controls";
 import { api, state, selected, e, button, go } from "../ui";
@@ -44,6 +45,6 @@ export function home() {
   };
   javaStatus.addEventListener("java-task",updateJavaTask);updateJavaTask();launch.append(javaStatus);
   const aside = homeAccount();
-  workspace.append(launch, aside); node.append(workspace);
+  workspace.append(launch, aside); node.append(workspace, homeContentSection());
   return node;
 }

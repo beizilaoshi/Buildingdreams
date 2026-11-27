@@ -1,3 +1,5 @@
+import { wallpaperRotationPanel } from '../components/wallpaper-rotation-panel';
+import { musicPanel } from "../components/music-panel";
 import { choice } from "../components/choice";
 import { api, state, e, button, heading, panel, field, input, notify, pendingAppearanceSettings as dirty } from "../ui";
 import { applySettings } from "../components/glass";
@@ -87,9 +89,22 @@ export function personalize() {
     control.onchange=()=>void save({[key]:control.checked}); updates.push(()=>{control.checked=Boolean(state.settings[key]);}); control.checked=Boolean(state.settings[key]); g.append(field(label,control));
   };
   const color = (g: HTMLElement, key: keyof Settings, label: string) => {
-    const wrap=e("div","range-control"), control=input(), code=input(); control.type="color"; code.maxLength=7; control.dataset.setting=key;
-    const update=()=>{control.value=code.value=String(state.settings[key]);}; updates.push(update); update();
-    control.oninput=()=>void save({[key]:control.value}); code.onchange=()=>{if(/^#[\da-f]{6}$/i.test(code.value)) void save({[key]:code.value});else update();}; code.setAttribute("aria-label",label+"色值"); control.setAttribute("aria-label",label); wrap.append(control,code); g.append(field(label,wrap));
+    const wrap=e("div","color-picker"), wheel=e("div","color-wheel"), plane=e("div","color-plane"), marker=e("span","color-plane-marker");
+    const hue=input(), code=input(); hue.type="range"; hue.min="0"; hue.max="359"; hue.step="1"; hue.dataset.setting=key; hue.dataset.colorChannel="hue";
+    code.maxLength=7; code.dataset.setting=key; code.dataset.colorChannel="hex"; code.setAttribute("aria-label",label+"十六进制色值");
+    wheel.dataset.colorWheel=String(key); plane.setAttribute("role","slider"); plane.setAttribute("tabindex","0"); plane.setAttribute("aria-label",label+"饱和度和明度");
+    wheel.append(plane,marker); wrap.append(wheel,hue,code); const colorField=e("div","field"); colorField.append(e("span","field-label",label),wrap); g.append(colorField);
+    let currentHue=220, saturation=.38, lightness=.68;
+    const rgbToHsl=(hex:string)=>{const r=parseInt(hex.slice(1,3),16)/255,gg=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255,max=Math.max(r,gg,b),min=Math.min(r,gg,b),d=max-min;let h=0,s=0,l=(max+min)/2;if(d){s=d/(1-Math.abs(2*l-1));switch(max){case r:h=((gg-b)/d)%6;break;case gg:h=(b-r)/d+2;break;default:h=(r-gg)/d+4;}h*=60;if(h<0)h+=360;}return [h,s,l] as const;};
+    const toHex=(h:number,s:number,l:number)=>{const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;const [r,gg,b]=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];return "#"+[r,gg,b].map(v=>Math.round((v+m)*255).toString(16).padStart(2,"0")).join("");};
+    const update=()=>{const value=String(state.settings[key]);code.value=value;[currentHue,saturation,lightness]=rgbToHsl(value);hue.value=String(Math.round(currentHue));plane.style.setProperty("--wheel-hue",String(currentHue));marker.style.left=`${saturation*100}%`;marker.style.top=`${(1-lightness)*100}%`;};
+    updates.push(update); update();
+    const commit=()=>{const value=toHex(currentHue,saturation,lightness);code.value=value;void save({[key]:value});};
+    hue.setAttribute("aria-label",label+"色相"); hue.oninput=()=>{currentHue=Number(hue.value);plane.style.setProperty("--wheel-hue",String(currentHue));commit();};
+    const move=(event:PointerEvent)=>{const rect=plane.getBoundingClientRect();saturation=Math.min(1,Math.max(0,(event.clientX-rect.left)/rect.width));lightness=1-Math.min(1,Math.max(0,(event.clientY-rect.top)/rect.height));marker.style.left=`${saturation*100}%`;marker.style.top=`${(1-lightness)*100}%`;commit();};
+    plane.onpointerdown=event=>{plane.setPointerCapture(event.pointerId);move(event);}; plane.onpointermove=event=>{if(plane.hasPointerCapture(event.pointerId))move(event);};
+    plane.onkeydown=event=>{const step=event.shiftKey?.1:.02;if(event.key==="ArrowLeft")saturation=Math.max(0,saturation-step);else if(event.key==="ArrowRight")saturation=Math.min(1,saturation+step);else if(event.key==="ArrowUp")lightness=Math.min(1,lightness+step);else if(event.key==="ArrowDown")lightness=Math.max(0,lightness-step);else return;event.preventDefault();marker.style.left=`${saturation*100}%`;marker.style.top=`${(1-lightness)*100}%`;commit();};
+    code.onchange=()=>{if(/^#[\da-f]{6}$/i.test(code.value)){[currentHue,saturation,lightness]=rgbToHsl(code.value);void save({[key]:code.value.toLowerCase()});}else update();};
   };
   const presets=section("presets","01 · 风格方案"), presetGrid=e("div","customization-presets");
   for(const preset of APPEARANCE_PRESETS) { const b=button("",()=>save(preset.settings),"customization-preset"); b.append(e("strong","",preset.name),e("p","muted",preset.description)); presetGrid.append(b); }
@@ -108,7 +123,9 @@ export function personalize() {
     const b=button(title,()=>save({wallpaper:`builtin:${id}`,backgroundStyle:"image"}),"wallpaper-choice"); b.dataset.wallpaper=`builtin:${id}`; b.style.backgroundImage=`linear-gradient(transparent,#101628cc),url("./assets/${file}.png")`; updates.push(()=>b.setAttribute("aria-pressed",String(state.settings.wallpaper===`builtin:${id}`))); gallery.append(b);
   }
   background.append(gallery,button("选择本地图片",async()=>{const path=await api("dialog.choose","wallpaper"); if(path) await save({wallpaper:path,backgroundStyle:"image"});},"quiet"));
+  background.append(wallpaperRotationPanel());
   const bgFine=grid(background); color(bgFine,"backgroundColor","底色 / 渐变起点"); color(bgFine,"gradientColor","渐变终点");
+  check(bgFine,"gradientAnimation","动态渐变颜色"); range(bgFine,"gradientSpeed","渐变流动速度",.25,4,.25);
   for(const [key,label,min,max,step] of [["wallpaperBrightness","图片亮度",0,1,.01],["wallpaperBlur","图片模糊",0,100,1],["wallpaperSaturation","图片饱和度",0,2,.01],["backgroundOverlay","暗色遮罩",0,.85,.01],["backgroundVignette","边缘暗角",0,1,.01],["wallpaperScale","图片缩放",1,1.5,.01],["wallpaperPositionX","图片水平位置",0,100,1],["wallpaperPositionY","图片垂直位置",0,100,1]] as const) range(bgFine,key,label,min,max,step);
   const material=grid(section("material","03 · 玻璃与颜色","material"));
   choices(material,"theme","主题",[["dark","深色"],["light","浅色"],["system","跟随系统"]]); choices(material,"glassStyle","卡片材质",[["frosted","磨砂玻璃"],["clear","清透玻璃"],["solid","实色"]]); color(material,"accentColor","强调色");
@@ -118,6 +135,7 @@ export function personalize() {
   choices(layout,"libraryView","游戏库布局",[["cards","卡片"],["list","列表"]]);
   range(layout,"fontScale","文字缩放",.85,1.2,.01); range(layout,"navWidth","导航宽度",72,128,1,"px"); range(layout,"contentWidth","内容最大宽度",960,1800,10,"px"); range(layout,"cardSpacing","卡片间距",12,32,1,"px"); check(layout,"navigationLabels","显示导航文字");
   const home=grid(section("home","05 · 首页文案","home"));
+  check(home,"rainbowText","彩虹标题文字（标题与品牌）");
   for(const [key,label,max] of [["homeTitle","首页标题",80],["homeSubtitle","首页副标题",160]] as const) { const text=document.createElement("textarea");text.maxLength=max;text.value=state.settings[key];text.dataset.setting=key;text.oninput=()=>void save({[key]:text.value});updates.push(()=>{if(text.value!==state.settings[key])text.value=state.settings[key];}); home.append(field(`${label}（最多 ${max} 字）`,text)); }
   range(home,"homeTitleSize","标题字号",32,76,1,"px"); choices(home,"homeTextAlign","标题对齐",[["left","左对齐"],["center","居中"]]); check(home,"showHomeIntro","显示首页引言");
   const motionCard=section("motion","06 · 动效与通知","motion"),motion=grid(motionCard);
@@ -140,5 +158,6 @@ export function personalize() {
   profileTools.append(button("导出外观 JSON",async()=>{await writes;if(dirty.size || saveFailed)throw Error("外观尚未保存，请先重试保存后再导出。");const path=await api("appearance.export",undefined);if(path)notify("外观方案已导出");},"quiet"),button("导入外观 JSON",async()=>{const patch=await api("appearance.import",undefined);if(!patch)return;preview.replaceChildren(e("p","",`已校验 ${Object.keys(patch).length} 项外观设置，应用后会自动保存。`),button("应用导入方案",async()=>{await save(patch);preview.hidden=true;},"primary"),button("取消",()=>{preview.hidden=true;},"quiet"));preview.hidden=false;},"quiet"),button("恢复全部默认外观",()=>save(resetAppearanceGroup("all")),"quiet"));
   profiles.append(profileTools,preview,list);
   const empty=e("p","muted","没有匹配的设置，试试其他关键词。"); empty.hidden=true;node.append(empty);updateSaveState=()=>{status.textContent=pending?"正在保存…":saveFailed||dirty.size?"保存失败，尚未保存":"已自动保存";retry.hidden=!saveFailed;sync();};updateSaveState();
+  node.append(musicPanel());
   return node;
 }

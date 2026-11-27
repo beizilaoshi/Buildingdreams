@@ -15,7 +15,7 @@ test('launch settings inherit, owned lifecycle updates preserve focus, and nativ
             const Java = req(path.join(cwd, 'dist/main/services/java.js')).JavaService;
             Java.prototype.detect = async () => [{ path: process.execPath, major: 17, version: '17', arch: 'amd64' }];
             const Launch = req(path.join(cwd, 'dist/main/services/launch.js')).LaunchService, original = Launch.prototype.start;
-            Launch.prototype.start = function (...args: any[]) { this.runner = async (options: any) => { (globalThis as any).launchOptions = options; return req('node:child_process').spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, windowsHide: true }); }; return original.apply(this, args); };
+            Launch.prototype.start = function (...args: any[]) { this.runner = async (options: any) => { (globalThis as any).launchOptions = options; return req('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(()=>console.log("Created textures -atlas"),200);setInterval(()=>{},1000)'], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, windowsHide: true }); }; return original.apply(this, args); };
         }, process.cwd());
         const page = await app.firstWindow();
         await page.waitForSelector('.home-intro');
@@ -24,9 +24,12 @@ test('launch settings inherit, owned lifecycle updates preserve focus, and nativ
         await page.reload();
         await page.getByRole('button', { name: '设置', exact: true }).click();
         await page.getByRole('radiogroup',{name:'启动选项范围',exact:true}).getByRole('radio',{name:'全局启动选项',exact:true}).click();
+        await page.getByRole('radiogroup',{name:'内存分配方式',exact:true}).getByRole('radio',{name:'自动分配（每次启动重新计算）',exact:true}).click();
         await page.getByLabel('窗口宽度', { exact: true }).fill('1152');
         await page.getByRole('button', { name: '保存启动选项', exact: true }).click();
         await page.getByRole('radiogroup',{name:'启动选项范围',exact:true}).getByRole('radio',{name:'当前游戏',exact:true}).click();
+        await expect(page.getByRole('radiogroup',{name:'内存分配方式',exact:true}).getByRole('radio',{name:'自动分配（每次启动重新计算）',exact:true})).toHaveAttribute('aria-checked','true');
+        await expect(page.getByRole('radio',{name:'游戏结束后退出启动器',exact:true})).toBeVisible();
         await expect(page.getByLabel('窗口宽度', { exact: true })).toBeDisabled();
         await expect(page.getByLabel('窗口宽度', { exact: true })).toHaveValue('1152');
         await page.getByLabel('窗口宽度 单独设置', { exact: true }).check();

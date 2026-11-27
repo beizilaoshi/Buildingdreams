@@ -27,6 +27,10 @@ describe("PCL requirement intersection and family ranking", () => {
         expect(() => rules.javaRequirement({ minecraft: "1.17.1", metadataMajor: 17, loader: { kind: "forge", version: "37.0.1" } })).toThrow("冲突");
         expect(rules.javaRequirement({ minecraft: "CustomVersion" }).reason).toContain("未知");
     });
+    it("explains the Java 8 update cap when a manually selected runtime is too new", () => {
+        const legacy = rules.javaRequirement({ minecraft: "1.16.5", loader: { kind: "forge", version: "36.2.25" } });
+        expect(() => rules.selectJava(legacy, [], 1024, "x64", runtime("1.8.0_321-b01"))).toThrow("8u320");
+    });
     it("rejects wrong architecture and 32-bit high heap, preserving compatible manual choice", () => {
         const r = rules.javaRequirement({ minecraft: "1.18" });
         expect(rules.selectJava(r, [runtime("17", "aarch64"), runtime("17", "unknown"), runtime("17", "x86")], 4096, "x64")).toBeUndefined();
@@ -34,6 +38,7 @@ describe("PCL requirement intersection and family ranking", () => {
         expect(rules.selectJava(r, [runtime("17")], 1024, "ia32")).toBeUndefined();
         expect(rules.selectJava(r, [runtime("17"), runtime("21")], 1024, "x64", runtime("21"))?.major).toBe(21);
         expect(() => rules.selectJava(r, [runtime("17")], 1024, "x64", runtime("8"))).toThrow("Java 17");
+        expect(() => rules.selectJava(r, [runtime("17")], 4096, "x64", runtime("17", "x86"))).toThrow("64 位");
     });
 });
 it("explicit family acquisition excludes game-compatible higher families", () => {

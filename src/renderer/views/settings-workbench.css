@@ -8,5 +8,15 @@
 .settings-workbench .form-grid > *, .settings-workbench .settings-grid > * {min-width:0}
 .settings-workbench textarea, .settings-workbench input {max-width:100%;box-sizing:border-box}
 .settings-workbench .java-plan-status {overflow-wrap:anywhere}
+.settings-workbench .settings-advanced {margin-top:14px;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--surface) 72%,transparent);overflow:hidden}
+.settings-workbench .settings-advanced > summary {padding:13px 16px;cursor:pointer;user-select:none;font-weight:600;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.settings-workbench .settings-advanced > summary::-webkit-details-marker {display:none}
+.settings-workbench .settings-advanced > summary::after {content:"⌄";font-size:17px;color:var(--muted);transition:transform .18s ease}
+.settings-workbench .settings-advanced[open] > summary {border-bottom:1px solid var(--border);color:var(--accent)}
+.settings-workbench .settings-advanced[open] > summary::after {transform:rotate(180deg)}
+.settings-workbench .settings-advanced > :not(summary) {margin-left:16px;margin-right:16px}
+.settings-workbench .settings-advanced > .form-grid {margin-top:14px}
+.settings-workbench .settings-advanced > .row {margin-top:14px;margin-bottom:14px}
+.settings-workbench .settings-advanced > p {line-height:1.6}
 .settings-card h2:focus {outline:2px solid var(--accent);outline-offset:5px}
 @media(max-width:1050px) {.settings-workbench .form-grid,.settings-workbench .settings-grid {grid-template-columns:1fr}}

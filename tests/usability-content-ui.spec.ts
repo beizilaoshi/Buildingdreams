@@ -28,7 +28,7 @@ test.beforeEach(async () => {
         const p = payload as CommandMap['content.search']['payload'];
         await wait(`search:${p.filter?.provider}:${p.query}`);
         if (f.searchFailures > 0) { f.searchFailures--; throw new Error('fixture search unavailable'); }
-        const result: SearchPage = { hits: [{ provider: p.filter?.provider ?? 'modrinth', project_id: 'fixture-project', title: `${p.query || 'Default'} @ ${p.filter?.offset ?? 0}`, description: 'Controlled content result', downloads: 10, author: 'Fixture', categories: [] }], offset: p.filter?.offset ?? 0, limit: 40, total_hits: 120 };
+        const result: SearchPage = { hits: [{ provider: p.filter?.provider === 'curseforge' ? 'curseforge' : 'modrinth', project_id: 'fixture-project', title: `${p.query || 'Default'} @ ${p.filter?.offset ?? 0}`, description: 'Controlled content result', downloads: 10, author: 'Fixture', categories: [] }], offset: p.filter?.offset ?? 0, limit: 40, total_hits: 120 };
         return result;
       }
       if (command === 'content.project') {

@@ -31,10 +31,5 @@ win:
   icon: build/icon.ico
   target:
     - portable
-    - nsis
-nsis:
-  artifactName: 'Buildingdreams-${version}-${arch}-nsis.${ext}'
-  oneClick: false
-  allowToChangeInstallationDirectory: true
 portable:
   artifactName: 'Buildingdreams-${version}-${arch}-portable.${ext}'

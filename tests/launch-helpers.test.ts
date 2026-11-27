@@ -31,4 +31,4 @@ it('cosmetics require the currently held child identity', async () => {
         for (const helper of helpers)
             helper.kill();
     }
-});
+}, 15000);

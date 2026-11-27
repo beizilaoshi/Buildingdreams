@@ -1,3 +1,5 @@
+import { externalAccountsPanel, externalLogin, externalSignout } from "./external-account";
+import { skinWorkbench } from './skin-workbench';
 import type { AccountSummary, DeviceLogin } from "../../shared/types";
 import {
   api,
@@ -318,7 +320,7 @@ export function accountManager(clientConfigured: (id: string) => void = () => {}
         e(
           "span",
           "badge",
-          `${account.kind === "local" ? "本地" : "Microsoft"} · ${account.status === "ready" ? "可用" : "需重新登录"}`,
+          `${account.kind === "local" ? "本地" : account.kind === "external" ? account.providerName ?? "外置认证" : "Microsoft"} · ${account.status === "ready" ? "可用" : "需重新登录"}`,
         ),
         button(
           currentAccount()?.id === account.id ? "已选择" : "选择",
@@ -336,9 +338,10 @@ export function accountManager(clientConfigured: (id: string) => void = () => {}
             )
           : button(
               "重新登录",
-              () => microsoftLogin(render, clientConfigured),
+              () => account.kind === "external" ? externalLogin(render) : microsoftLogin(render, clientConfigured),
               "quiet",
             ),
+        ...(account.kind === "external" ? [button("刷新登录", async () => { try { await api("external.refresh", account.id); await refresh(); render(); } catch (err) { const body=e("p", "", message(err)); dialog("外置认证", body); } }, "quiet"), button("注销会话", () => externalSignout(account, render), "quiet")] : [button("皮肤管理", () => skinWorkbench(account), "quiet")]),
         button(
           "移除",
           async () => {
@@ -363,6 +366,8 @@ export function accountManager(clientConfigured: (id: string) => void = () => {}
       "quiet",
     ),
     button("登录 Microsoft", () => microsoftLogin(render, clientConfigured), "primary"),
+    button("外置登录", () => externalLogin(render), "quiet"),
+    externalAccountsPanel(render),
   );
   return node;
 }

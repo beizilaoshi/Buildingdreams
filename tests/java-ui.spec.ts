@@ -59,6 +59,15 @@ test("Java auto mode uses production managed acquisition, persists manual mode, 
         await page.reload();
         await page.getByRole("button", { name: "设置", exact: true }).click();
         await expect(page.getByRole("radio", { name: "自动选择", exact: true })).toBeVisible();
+        await expect(page.locator(".java-advanced")).not.toHaveAttribute("open", "");
+        await expect(page.getByLabel("最大内存（MB）", { exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "下载 Java 8", exact: true })).toBeHidden();
+        await page.getByRole("radio", { name: "手动指定", exact: true }).click();
+        await expect(page.locator(".java-advanced")).toHaveAttribute("open", "");
+        await page.getByRole("radio", { name: "自动选择", exact: true }).click();
+        await expect(page.getByRole("button", { name: "下载 Java 8", exact: true })).toBeVisible();
+        await page.locator(".java-advanced summary").click();
+        await expect(page.getByRole("button", { name: "下载 Java 8", exact: true })).toBeHidden();
         await expect(page.locator(".java-plan-status")).toContainText("未找到兼容 Java 17");
         await page.getByRole("button", { name: "自动配置（缺少时下载）", exact: true }).click();
         await expect(page.locator(".java-plan-status")).toContainText("17.0.1+1");

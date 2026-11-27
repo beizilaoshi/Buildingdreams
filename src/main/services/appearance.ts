@@ -17,7 +17,7 @@ export function activeTexture(profile: any): string | null {
   if (!Array.isArray(profile?.skins)) return null;
   return textureUrl(profile.skins.find((skin: any) => skin?.state === "ACTIVE")?.url);
 }
-function validateSkinContainer(data: Buffer): void {
+export function validateSkinContainer(data: Buffer): void {
   if (data.length < 33 || !data.subarray(0, 8).equals(signature) || data.readUInt32BE(8) !== 13 || data.toString("ascii", 12, 16) !== "IHDR" || data.readUInt32BE(16) !== 64 || ![32, 64].includes(data.readUInt32BE(20)) || data[28] !== 0) throw new Error();
   // pngjs accepts repeated headers. Never let a later header bypass the allocation bounds.
   for (let offset = 33; offset + 12 <= data.length;) {
